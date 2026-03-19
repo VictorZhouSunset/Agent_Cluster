@@ -446,6 +446,111 @@ When following the current live structure, use these install locations:
 - `md` / `agent_2`: copy `deploy/agent_2_dashboard_adapter` to a deployment folder such as `/home/ec2-user/agent_2_dashboard_adapter`
 - colleague-owned agent runtime: `/opt/.../agent_server.py`
 
+## Manual GitHub Deployment Button
+
+This repo now includes a manual GitHub Actions deployment workflow:
+
+```text
+.github/workflows/deploy-test-cluster.yml
+```
+
+It is designed for the current test cluster shape:
+
+1. validate the repo in GitHub Actions
+2. deploy `md` first through AWS SSM
+3. deploy `cio` second through AWS SSM
+4. fail the whole run if either machine fails
+
+### What The Workflow Assumes
+
+- `cio` and `md` are both online in AWS Systems Manager
+- GitHub Actions can assume an AWS role through OIDC
+- `cio` already stores a GitHub read credential so `git pull --ff-only` can run non-interactively
+- `md` already stores a GitHub read credential so `git pull --ff-only` can run non-interactively
+- the existing systemd service names are:
+  - `gate-dashboard`
+  - `agent2-dashboard-adapter`
+
+### One-Time EC2 Git Credential Setup
+
+Because the deployment workflow runs `git pull --ff-only` on each machine, each EC2 needs a stored read-only GitHub credential once before the workflow can run unattended.
+
+Run these commands as `ec2-user` on both `cio` and `md`:
+
+```bash
+git config --global credential.helper store
+chmod 700 /home/ec2-user
+```
+
+Then run one authenticated pull in the relevant repo directory:
+
+- `cio`
+
+  ```bash
+  cd /home/ec2-user/Agent_Cluster_v2
+  git pull --ff-only
+  chmod 600 /home/ec2-user/.git-credentials
+  ```
+
+- `md`
+
+  ```bash
+  cd /home/ec2-user/Agent_Cluster_deploy_src
+  git pull --ff-only
+  chmod 600 /home/ec2-user/.git-credentials
+  ```
+
+Use your GitHub username and a read-only Personal Access Token when prompted. After that first successful pull, the GitHub Actions workflow can reuse the stored credential non-interactively.
+
+### Required GitHub Repository Variables
+
+In GitHub:
+
+`Settings -> Secrets and variables -> Actions -> Variables`
+
+Add these repository variables:
+
+- `AWS_REGION`
+  Example: `us-east-1`
+- `AWS_DEPLOY_ROLE_ARN`
+  The IAM role ARN that GitHub Actions should assume through OIDC
+- `AWS_CIO_INSTANCE_ID`
+  The EC2 instance id for `cio`
+- `AWS_MD_INSTANCE_ID`
+  The EC2 instance id for `md`
+
+### What The Workflow Runs On md
+
+The workflow updates the source clone on `md`, syncs the adapter into the live runtime folder, and restarts the adapter:
+
+```bash
+cd /home/ec2-user/Agent_Cluster_deploy_src
+git pull --ff-only
+rsync -a --delete /home/ec2-user/Agent_Cluster_deploy_src/deploy/agent_2_dashboard_adapter/ /home/ec2-user/agent_2_dashboard_adapter/
+sudo systemctl restart agent2-dashboard-adapter
+```
+
+### What The Workflow Runs On cio
+
+The workflow updates the main repo on `cio`, rebuilds the dashboard, and restarts the service:
+
+```bash
+cd /home/ec2-user/Agent_Cluster_v2
+git pull --ff-only
+source /home/ec2-user/.nvm/nvm.sh
+pnpm install
+pnpm build
+sudo systemctl restart gate-dashboard
+```
+
+### How To Use It
+
+1. Push your code to GitHub
+2. Open the `Actions` tab in GitHub
+3. Open `Deploy Test Cluster`
+4. Click `Run workflow`
+5. Wait for `md` to complete before `cio` begins
+
 ## Validation
 
 Run the non-E2E checks after changes:

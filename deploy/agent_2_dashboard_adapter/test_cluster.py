@@ -93,6 +93,33 @@ class DashboardAdapterServiceTests(unittest.TestCase):
             self.assertEqual(nodes[0]["id"], "openmoose02-md")
             self.assertEqual(nodes[1]["status"], "offline")
 
+    def test_list_nodes_marks_timed_out_remote_nodes_offline(self) -> None:
+        with tempfile.TemporaryDirectory() as root_dir:
+            os.makedirs(os.path.join(root_dir, ".openclaw", "workspace"), exist_ok=True)
+            with open(
+                os.path.join(root_dir, ".openclaw", "workspace", "AGENTS.md"),
+                "w",
+                encoding="utf-8",
+            ) as handle:
+                handle.write("# Agents")
+
+            service = self._create_service(root_dir)
+
+            with patch.object(
+                DashboardAdapterService,
+                "_local_health_payload",
+                return_value={"agent": "OpenMoose02_MD", "role": "md", "queue": 0},
+            ), patch.object(
+                DashboardAdapterService,
+                "_fetch_remote_health",
+                side_effect=AdapterRequestError("timed out"),
+            ):
+                nodes = service.list_nodes()
+                health = service.get_health_summary()
+
+            self.assertEqual(nodes[1]["status"], "offline")
+            self.assertIn("offline", health["summary"])
+
     def test_remote_document_calls_use_remote_passthrough_helpers(self) -> None:
         with tempfile.TemporaryDirectory() as root_dir:
             os.makedirs(os.path.join(root_dir, ".openclaw", "workspace"), exist_ok=True)

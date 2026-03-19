@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 import json
 import os
+import socket
 from typing import Any, Dict, List, Mapping, Optional
 from urllib import error, parse, request
 
@@ -176,6 +177,8 @@ def _request_json(
     except error.HTTPError as exc:
         detail = exc.read().decode("utf-8", errors="ignore")
         raise AdapterRequestError(f"{exc.code} {exc.reason}: {detail}".strip()) from exc
+    except (TimeoutError, socket.timeout) as exc:
+        raise AdapterRequestError("timed out") from exc
     except error.URLError as exc:
         raise AdapterRequestError(str(exc.reason)) from exc
 
