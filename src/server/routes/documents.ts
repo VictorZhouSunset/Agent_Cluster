@@ -10,6 +10,7 @@ import { sendJson } from "./appRouter.js";
 interface DocumentRouteOptions {
   kind: EditableDocumentKind;
   documentId?: string;
+  nodeId?: string;
 }
 
 interface WriteDocumentBody {
@@ -62,7 +63,10 @@ export async function handleDocumentsRoute(
   const method = request.method ?? "GET";
 
   if (method === "GET" && options.documentId === undefined) {
-    const documents = await provider.listEditableDocuments();
+    const documents = await provider.listEditableDocuments({
+      kind: options.kind,
+      nodeId: options.nodeId
+    });
     sendJson(response, 200, { data: documents.filter((document) => document.kind === options.kind) });
     return;
   }
@@ -80,7 +84,10 @@ export async function handleDocumentsRoute(
   const documentId = toRouteDocumentId(options.kind, options.documentId);
 
   if (method === "GET") {
-    const document = await provider.readEditableDocument(documentId);
+    const document = await provider.readEditableDocument(documentId, {
+      kind: options.kind,
+      nodeId: options.nodeId
+    });
     sendJson(response, 200, { data: document });
     return;
   }
@@ -100,6 +107,8 @@ export async function handleDocumentsRoute(
 
     const document = await provider.writeEditableDocument({
       id: documentId,
+      kind: options.kind,
+      nodeId: options.nodeId,
       content: body.content
     });
 

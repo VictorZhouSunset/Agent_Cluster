@@ -1,13 +1,14 @@
 // input: file document list/detail/save requests from the shared API client
-// output: rendered file workspace for browsing and editing allowlisted markdown files
-// pos: files feature entrypoint built on the shared editable-documents workspace
+// output: rendered file workspace for browsing and editing allowlisted markdown files per node
+// pos: files feature entrypoint built on the node-scoped document workspace
 // 一旦我被更新，务必更新我的开头注释以及所属文件夹的md。
 import { apiClient } from "../../lib/apiClient";
-import { EditableDocumentsScreen } from "../documents/EditableDocumentsScreen";
+import { NodeScopedDocumentsScreen } from "../documents/NodeScopedDocumentsScreen";
 
 export function FilesScreen() {
   return (
-    <EditableDocumentsScreen
+    <NodeScopedDocumentsScreen
+      kind="file"
       collectionTitle="Files"
       editorTitle="File Editor"
       emptyMessage="No files found."

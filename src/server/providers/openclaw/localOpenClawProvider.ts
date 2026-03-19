@@ -1,9 +1,10 @@
 // input: local OpenClaw-facing adapter hooks and fallback stub data
-// output: normalized dashboard health, agent, and session data for backend routes
+// output: normalized dashboard health, node, agent, and session data for backend routes
 // pos: local OpenClaw provider implementation used by the dashboard backend
 // 一旦我被更新，务必更新我的开头注释以及所属文件夹的md。
 import type {
   AgentStatus,
+  ClusterNode,
   DashboardHealth,
   SessionDetail,
   SessionSummary,
@@ -27,7 +28,25 @@ const stubAgents: AgentStatus[] = [
     name: "Gate Node Agent",
     status: "idle",
     summary: "Stubbed local agent status.",
-    updatedAt: "2026-03-12T00:00:00.000Z"
+    updatedAt: "2026-03-12T00:00:00.000Z",
+    nodeId: "agent-1",
+    nodeName: "Gate Node"
+  }
+];
+
+const stubNodes: ClusterNode[] = [
+  {
+    id: "agent-1",
+    name: "Gate Node",
+    kind: "gate",
+    origin: "local",
+    status: "healthy",
+    checkedAt: "2026-03-12T00:00:00.000Z",
+    summary: "Local OpenClaw stub is responding.",
+    supportsSessions: true,
+    supportsSkills: true,
+    supportsFiles: true,
+    supportsWrites: true
   }
 ];
 
@@ -68,6 +87,10 @@ export function createLocalOpenClawProvider(
     async getHealth(): Promise<DashboardHealth> {
       return cloneHealth(await adapter.readHealth());
     },
+    async listNodes(): Promise<ClusterNode[]> {
+      const nodes = await adapter.listNodes();
+      return nodes.map(cloneNode);
+    },
     async listAgents(): Promise<AgentStatus[]> {
       const agents = await adapter.listAgents();
       return agents.map(cloneAgent);
@@ -88,6 +111,9 @@ function createStubAdapter(): LocalOpenClawAdapter {
     async readHealth() {
       return cloneHealth(stubHealth);
     },
+    async listNodes() {
+      return stubNodes.map(cloneNode);
+    },
     async listAgents() {
       return stubAgents.map(cloneAgent);
     },
@@ -107,6 +133,10 @@ function cloneHealth(health: DashboardHealth): DashboardHealth {
 
 function cloneAgent(agent: AgentStatus): AgentStatus {
   return { ...agent };
+}
+
+function cloneNode(node: ClusterNode): ClusterNode {
+  return { ...node };
 }
 
 function cloneSessionSummary(session: SessionSummary): SessionSummary {

@@ -72,6 +72,27 @@ describe("FilesScreen", () => {
       vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
         const url = typeof input === "string" ? input : input.toString();
 
+        if (url.endsWith("/api/nodes")) {
+          return Promise.resolve(
+            jsonResponse({
+              data: [
+                {
+                  id: "agent-1",
+                  name: "Gate Node",
+                  kind: "gate",
+                  origin: "local",
+                  status: "healthy",
+                  checkedAt: "2026-03-16T00:00:00.000Z",
+                  supportsSessions: true,
+                  supportsSkills: true,
+                  supportsFiles: true,
+                  supportsWrites: true
+                }
+              ]
+            })
+          );
+        }
+
         if (url.endsWith("/api/files") && !init?.method) {
           return Promise.resolve(
             jsonResponse({
@@ -152,6 +173,27 @@ describe("FilesScreen", () => {
       "fetch",
       vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
         const url = typeof input === "string" ? input : input.toString();
+
+        if (url.endsWith("/api/nodes")) {
+          return Promise.resolve(
+            jsonResponse({
+              data: [
+                {
+                  id: "agent-1",
+                  name: "Gate Node",
+                  kind: "gate",
+                  origin: "local",
+                  status: "healthy",
+                  checkedAt: "2026-03-16T00:00:00.000Z",
+                  supportsSessions: true,
+                  supportsSkills: true,
+                  supportsFiles: true,
+                  supportsWrites: true
+                }
+              ]
+            })
+          );
+        }
 
         if (url.endsWith("/api/files") && !init?.method) {
           return Promise.resolve(
@@ -255,6 +297,137 @@ describe("FilesScreen", () => {
     await vi.waitFor(() => {
       expect((userButton as HTMLButtonElement).disabled).toBe(false);
       expect(container.textContent).toContain("Changes saved.");
+    });
+  });
+
+  it("switches to a remote node and scopes file requests to that node", async () => {
+    const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input.toString();
+
+      if (url.endsWith("/api/nodes")) {
+        return Promise.resolve(
+          jsonResponse({
+            data: [
+              {
+                id: "agent-1",
+                name: "Gate Node",
+                kind: "gate",
+                origin: "local",
+                status: "healthy",
+                checkedAt: "2026-03-16T00:00:00.000Z",
+                supportsSessions: true,
+                supportsSkills: true,
+                supportsFiles: true,
+                supportsWrites: true
+              },
+              {
+                id: "agent-2",
+                name: "OpenMoose02_MD",
+                kind: "md",
+                origin: "remote",
+                status: "healthy",
+                checkedAt: "2026-03-16T00:00:00.000Z",
+                supportsSessions: false,
+                supportsSkills: true,
+                supportsFiles: true,
+                supportsWrites: true
+              }
+            ]
+          })
+        );
+      }
+
+      if (url.endsWith("/api/files") && !url.includes("?") && !init?.method) {
+        return Promise.resolve(
+          jsonResponse({
+            data: [
+              {
+                id: "agents-md",
+                name: "AGENTS.md",
+                path: "AGENTS.md",
+                kind: "file"
+              }
+            ]
+          })
+        );
+      }
+
+      if (url.includes("/api/files?node=agent-2") && !init?.method) {
+        return Promise.resolve(
+          jsonResponse({
+            data: [
+              {
+                id: "agents-md",
+                name: "AGENTS.md",
+                path: "AGENTS.md",
+                kind: "file"
+              }
+            ]
+          })
+        );
+      }
+
+      if (url.endsWith("/api/files/agents-md") && !url.includes("?") && !init?.method) {
+        return Promise.resolve(
+          jsonResponse({
+            data: {
+              id: "agents-md",
+              name: "AGENTS.md",
+              path: "AGENTS.md",
+              kind: "file",
+              content: "# Agents"
+            }
+          })
+        );
+      }
+
+      if (url.includes("/api/files/agents-md?node=agent-2") && !init?.method) {
+        return Promise.resolve(
+          jsonResponse({
+            data: {
+              id: "agents-md",
+              name: "AGENTS.md",
+              path: "AGENTS.md",
+              kind: "file",
+              content: "# Remote Agents"
+            }
+          })
+        );
+      }
+
+      return Promise.reject(new Error(`Unhandled request: ${url}`));
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    await act(async () => {
+      root.render(<FilesScreen />);
+    });
+
+    await vi.waitFor(() => {
+      expect((container.querySelector("select") as HTMLSelectElement)?.value).toBe("agent-1");
+    });
+
+    await act(async () => {
+      const select = container.querySelector("select") as HTMLSelectElement;
+      const setValue = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value")?.set;
+      setValue?.call(select, "agent-2");
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+
+    await vi.waitFor(() => {
+      expect((container.querySelector("textarea") as HTMLTextAreaElement)?.value).toBe("# Remote Agents");
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/files?node=agent-2", {
+      headers: {
+        Accept: "application/json"
+      }
+    });
+    expect(fetchMock).toHaveBeenCalledWith("/api/files/agents-md?node=agent-2", {
+      headers: {
+        Accept: "application/json"
+      }
     });
   });
 });

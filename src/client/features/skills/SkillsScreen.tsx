@@ -1,13 +1,14 @@
 // input: skill document list/detail/save requests from the shared API client
-// output: rendered skill workspace for browsing and editing allowlisted skills
-// pos: skills feature entrypoint built on the shared editable-documents workspace
+// output: rendered skill workspace for browsing and editing allowlisted skills per node
+// pos: skills feature entrypoint built on the node-scoped document workspace
 // 一旦我被更新，务必更新我的开头注释以及所属文件夹的md。
 import { apiClient } from "../../lib/apiClient";
-import { EditableDocumentsScreen } from "../documents/EditableDocumentsScreen";
+import { NodeScopedDocumentsScreen } from "../documents/NodeScopedDocumentsScreen";
 
 export function SkillsScreen() {
   return (
-    <EditableDocumentsScreen
+    <NodeScopedDocumentsScreen
+      kind="skill"
       collectionTitle="Skills"
       editorTitle="Skill Editor"
       emptyMessage="No skills found."

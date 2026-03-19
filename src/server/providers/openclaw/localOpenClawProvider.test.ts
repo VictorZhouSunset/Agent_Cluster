@@ -1,3 +1,7 @@
+// input: stubbed local adapter state and the local OpenClaw provider factory
+// output: assertions for normalized local health, node, agent, and session reads
+// pos: provider tests for the local OpenClaw runtime wrapper
+// 一旦我被更新，务必更新我的开头注释以及所属文件夹的md。
 import type { LocalOpenClawAdapter } from "./types";
 import type { SessionDetail } from "../../../shared/types";
 import { describe, expect, it } from "vitest";
@@ -44,7 +48,29 @@ describe("local OpenClaw provider", () => {
         name: "Gate Node Agent",
         status: "idle",
         summary: "Stubbed local agent status.",
-        updatedAt: "2026-03-12T00:00:00.000Z"
+        updatedAt: "2026-03-12T00:00:00.000Z",
+        nodeId: "agent-1",
+        nodeName: "Gate Node"
+      }
+    ]);
+  });
+
+  it("returns a local node inventory", async () => {
+    const provider = createLocalOpenClawProvider();
+
+    await expect(provider.listNodes()).resolves.toEqual([
+      {
+        id: "agent-1",
+        name: "Gate Node",
+        kind: "gate",
+        origin: "local",
+        status: "healthy",
+        checkedAt: "2026-03-12T00:00:00.000Z",
+        summary: "Local OpenClaw stub is responding.",
+        supportsSessions: true,
+        supportsSkills: true,
+        supportsFiles: true,
+        supportsWrites: true
       }
     ]);
   });
@@ -87,13 +113,29 @@ describe("local OpenClaw provider", () => {
         checkedAt: "2026-03-11T12:00:00.000Z",
         summary: "Adapter health"
       },
+      nodes: [
+        {
+          id: "agent-custom-node",
+          name: "Custom Node",
+          kind: "gate" as const,
+          origin: "local" as const,
+          status: "healthy" as const,
+          checkedAt: "2026-03-11T12:00:00.000Z",
+          supportsSessions: true,
+          supportsSkills: true,
+          supportsFiles: true,
+          supportsWrites: true
+        }
+      ],
       agents: [
         {
           id: "agent-custom",
           name: "Custom Agent",
           status: "running" as const,
           summary: "Adapter agent",
-          updatedAt: "2026-03-11T12:00:00.000Z"
+          updatedAt: "2026-03-11T12:00:00.000Z",
+          nodeId: "agent-custom-node",
+          nodeName: "Custom Node"
         }
       ],
       sessionSummaries: [
@@ -128,6 +170,9 @@ describe("local OpenClaw provider", () => {
       async readHealth() {
         return adapterState.health;
       },
+      async listNodes() {
+        return adapterState.nodes;
+      },
       async listAgents() {
         return adapterState.agents;
       },
@@ -144,6 +189,9 @@ describe("local OpenClaw provider", () => {
     const health = await provider.getHealth();
     health.summary = "Mutated health";
 
+    const nodes = await provider.listNodes();
+    nodes[0].name = "Mutated node";
+
     const agents = await provider.listAgents();
     agents[0].name = "Mutated agent";
 
@@ -151,6 +199,7 @@ describe("local OpenClaw provider", () => {
 
     expect(sessions).toEqual(adapterState.sessionSummaries);
     await expect(provider.getHealth()).resolves.toEqual(adapterState.health);
+    await expect(provider.listNodes()).resolves.toEqual(adapterState.nodes);
     await expect(provider.listAgents()).resolves.toEqual(adapterState.agents);
     await expect(provider.getSession("session-custom")).resolves.toEqual(
       adapterState.sessionDetails["session-custom"]

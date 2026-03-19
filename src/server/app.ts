@@ -8,9 +8,8 @@ import { fileURLToPath } from "node:url";
 import { dirname, extname, join, normalize } from "node:path";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { FilesystemProvider } from "./providers/filesystem/types.js";
-import { createLocalFilesystemProvider } from "./providers/filesystem/localFilesystemProvider.js";
 import type { OpenClawProvider } from "./providers/openclaw/types.js";
-import { createLocalOpenClawProvider } from "./providers/openclaw/localOpenClawProvider.js";
+import { createConfiguredProviders, type ClusterEnvironment } from "./providers/cluster/createConfiguredProviders.js";
 import { createAppRouter, isApiPath } from "./routes/appRouter.js";
 
 const SERVER_MODULE_DIR = dirname(fileURLToPath(import.meta.url));
@@ -66,11 +65,19 @@ export function createApp(options?: {
   clientDir?: string;
   filesystemProvider?: FilesystemProvider;
   openClawProvider?: OpenClawProvider;
+  env?: ClusterEnvironment;
 }) {
   const clientDir = options?.clientDir ?? resolveDefaultClientDir(fileURLToPath(import.meta.url));
+  const configuredProviders =
+    options?.filesystemProvider && options?.openClawProvider
+      ? {
+          filesystemProvider: options.filesystemProvider,
+          openClawProvider: options.openClawProvider
+        }
+      : createConfiguredProviders(process.cwd(), options?.env ?? process.env);
   const apiRouter = createAppRouter({
-    filesystemProvider: options?.filesystemProvider ?? createLocalFilesystemProvider(process.cwd()),
-    openClawProvider: options?.openClawProvider ?? createLocalOpenClawProvider()
+    filesystemProvider: options?.filesystemProvider ?? configuredProviders.filesystemProvider,
+    openClawProvider: options?.openClawProvider ?? configuredProviders.openClawProvider
   });
 
   return async (request: IncomingMessage, response: ServerResponse) => {

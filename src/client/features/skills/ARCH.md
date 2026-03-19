@@ -1,10 +1,10 @@
 # skills
 Client feature for editing allowlisted skill markdown files.
-Wraps the shared document workspace with skill-specific copy and API methods.
-Includes integration tests for skill saves and save-time locking.
+Wraps the node-scoped document workspace with skill-specific copy and API methods.
+Includes integration tests for skill saves, save-time locking, and node switching.
 一旦我所属的文件夹有所变化，请更新我。
 
 | file name | position | function |
 | --- | --- | --- |
-| SkillsScreen.tsx | feature entrypoint | configures the shared document workspace for skills |
-| SkillsScreen.test.tsx | integration test | verifies skill reads, saves, and save-time locking |
+| SkillsScreen.tsx | feature entrypoint | configures the node-scoped document workspace for skills |
+| SkillsScreen.test.tsx | integration test | verifies skill reads, saves, save-time locking, and node switching |

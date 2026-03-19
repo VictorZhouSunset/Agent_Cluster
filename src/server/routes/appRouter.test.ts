@@ -1,3 +1,7 @@
+// input: temporary filesystem fixtures plus stubbed provider dependencies for API requests
+// output: route-level assertions for dashboard API success and error responses
+// pos: integration tests for the central dashboard API router
+// 一旦我被更新，务必更新我的开头注释以及所属文件夹的md。
 import { mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -52,6 +56,23 @@ describe("app router", () => {
             title: "Session One",
             updatedAt: "2026-03-12T00:00:00.000Z",
             status: "active"
+          }
+        ];
+      },
+      async listNodes() {
+        return [
+          {
+            id: "agent-1",
+            name: "Gate Node",
+            kind: "gate",
+            origin: "local",
+            status: "healthy",
+            checkedAt: "2026-03-12T00:00:00.000Z",
+            summary: "ok",
+            supportsSessions: true,
+            supportsSkills: true,
+            supportsFiles: true,
+            supportsWrites: true
           }
         ];
       },
@@ -113,6 +134,29 @@ describe("app router", () => {
           name: "Planner",
           status: "idle",
           updatedAt: "2026-03-12T00:00:00.000Z"
+        }
+      ]
+    });
+  });
+
+  it("returns node data", async () => {
+    const response = await request(createRouteApp()).get("/api/nodes");
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      data: [
+        {
+          id: "agent-1",
+          name: "Gate Node",
+          kind: "gate",
+          origin: "local",
+          status: "healthy",
+          checkedAt: "2026-03-12T00:00:00.000Z",
+          summary: "ok",
+          supportsSessions: true,
+          supportsSkills: true,
+          supportsFiles: true,
+          supportsWrites: true
         }
       ]
     });
@@ -190,6 +234,57 @@ describe("app router", () => {
     expect(saveResponse.status).toBe(200);
     expect(saveResponse.body.data.content).toBe("# Updated Agents");
     await expect(readFile(join(rootDir, "AGENTS.md"), "utf8")).resolves.toBe("# Updated Agents");
+  });
+
+  it("passes the requested node id through document routes", async () => {
+    const observedCalls: Array<Record<string, unknown>> = [];
+    const nodeAwareFilesystemProvider: FilesystemProvider = {
+      ...filesystemProvider,
+      async listEditableDocuments(options) {
+        observedCalls.push({ type: "list", options });
+        return filesystemProvider.listEditableDocuments();
+      },
+      async readEditableDocument(documentId, options) {
+        observedCalls.push({ type: "read", documentId, options });
+        return filesystemProvider.readEditableDocument(documentId);
+      },
+      async writeEditableDocument(input) {
+        observedCalls.push({ type: "write", input });
+        return filesystemProvider.writeEditableDocument({
+          id: input.id,
+          content: input.content
+        });
+      }
+    };
+
+    const app = createRouteApp({
+      filesystemProvider: nodeAwareFilesystemProvider
+    });
+
+    await request(app).get("/api/files?node=agent-2");
+    await request(app).get("/api/files/agents-md?node=agent-2");
+    await request(app).put("/api/files/agents-md?node=agent-2").send({ content: "# Updated Agents" });
+
+    expect(observedCalls).toEqual([
+      {
+        type: "list",
+        options: { kind: "file", nodeId: "agent-2" }
+      },
+      {
+        type: "read",
+        documentId: "agents-md",
+        options: { kind: "file", nodeId: "agent-2" }
+      },
+      {
+        type: "write",
+        input: {
+          id: "agents-md",
+          kind: "file",
+          nodeId: "agent-2",
+          content: "# Updated Agents"
+        }
+      }
+    ]);
   });
 
   it("lists skill documents", async () => {

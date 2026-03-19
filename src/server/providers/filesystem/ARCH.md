@@ -1,7 +1,7 @@
 # filesystem
 Allowlisted document storage layer for the backend.
 Owns id validation, path resolution, and local file reads/writes.
-Tests here cover guardrails and provider behavior.
+Interfaces here now support optional node-scoped routing on top of the local provider.
 一旦我所属的文件夹有所变化，请更新我。
 
 | file name | position | function |
@@ -11,4 +11,4 @@ Tests here cover guardrails and provider behavior.
 | constants.ts | config module | declares fixed editable files and skill id rules |
 | localFilesystemProvider.ts | provider implementation | lists, reads, and writes allowlisted local documents |
 | localFilesystemProvider.test.ts | provider test | verifies local document read/write behavior |
-| types.ts | interface module | defines backend filesystem provider contracts |
+| types.ts | interface module | defines backend filesystem provider contracts and node-scoped document options |

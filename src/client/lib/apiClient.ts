@@ -1,9 +1,10 @@
 // input: browser fetch requests and server JSON envelopes for dashboard resources
-// output: typed client-side API methods plus normalized request failures
+// output: typed client-side API methods for local and remote-node dashboard resources
 // pos: client data access layer between React screens and the internal backend
 // 一旦我被更新，务必更新我的开头注释以及所属文件夹的md。
 import type {
   AgentStatus,
+  ClusterNode,
   DashboardHealth,
   EditableDocument,
   EditableDocumentContent,
@@ -65,6 +66,16 @@ function normalizeSkillDocument<T extends EditableDocument | EditableDocumentCon
 
 function toSkillRouteId(documentId: string) {
   return documentId.startsWith("skill:") ? documentId.slice("skill:".length) : documentId;
+}
+
+function withNodeQuery(path: string, nodeId?: string) {
+  if (!nodeId) {
+    return path;
+  }
+
+  const url = new URL(path, "http://dashboard.local");
+  url.searchParams.set("node", nodeId);
+  return `${url.pathname}${url.search}`;
 }
 
 async function getJson<T>(path: string): Promise<T> {
@@ -131,42 +142,53 @@ export const apiClient = {
   getAgents() {
     return getJson<AgentStatus[]>("/api/agents");
   },
+  getNodes() {
+    return getJson<ClusterNode[]>("/api/nodes");
+  },
   listSessions() {
     return getJson<SessionSummary[]>("/api/sessions");
   },
   getSession(sessionId: string) {
     return getJson<SessionDetail>(`/api/sessions/${encodeURIComponent(sessionId)}`);
   },
-  async listSkills() {
-    const documents = await getJson<EditableDocument[]>("/api/skills");
+  async listSkills(nodeId?: string) {
+    const documents = await getJson<EditableDocument[]>(
+      withNodeQuery("/api/skills", nodeId)
+    );
     // The backend lists skill ids as `skill:<name>`, but the route layer expects
     // only the `<name>` segment for detail and save endpoints.
     return documents.map((document) => normalizeSkillDocument(document));
   },
-  async getSkill(documentId: string) {
+  async getSkill(documentId: string, nodeId?: string) {
     const document = await getJson<EditableDocumentContent>(
-      `/api/skills/${encodeURIComponent(toSkillRouteId(documentId))}`
+      withNodeQuery(
+        `/api/skills/${encodeURIComponent(toSkillRouteId(documentId))}`,
+        nodeId
+      )
     );
     return normalizeSkillDocument(document);
   },
-  async saveSkill(documentId: string, content: string) {
+  async saveSkill(documentId: string, content: string, nodeId?: string) {
     const document = await putJson<EditableDocumentContent>(
-      `/api/skills/${encodeURIComponent(toSkillRouteId(documentId))}`,
+      withNodeQuery(
+        `/api/skills/${encodeURIComponent(toSkillRouteId(documentId))}`,
+        nodeId
+      ),
       { content }
     );
     return normalizeSkillDocument(document);
   },
-  listFiles() {
-    return getJson<EditableDocument[]>("/api/files");
+  listFiles(nodeId?: string) {
+    return getJson<EditableDocument[]>(withNodeQuery("/api/files", nodeId));
   },
-  getFile(documentId: string) {
+  getFile(documentId: string, nodeId?: string) {
     return getJson<EditableDocumentContent>(
-      `/api/files/${encodeURIComponent(documentId)}`
+      withNodeQuery(`/api/files/${encodeURIComponent(documentId)}`, nodeId)
     );
   },
-  saveFile(documentId: string, content: string) {
+  saveFile(documentId: string, content: string, nodeId?: string) {
     return putJson<EditableDocumentContent>(
-      `/api/files/${encodeURIComponent(documentId)}`,
+      withNodeQuery(`/api/files/${encodeURIComponent(documentId)}`, nodeId),
       { content }
     );
   }

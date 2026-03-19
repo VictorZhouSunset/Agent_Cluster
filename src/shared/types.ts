@@ -1,5 +1,5 @@
 // input: normalized dashboard domain concepts shared by client and server code
-// output: shared TypeScript contracts for health, sessions, agents, and documents
+// output: shared TypeScript contracts for cluster nodes, health, sessions, agents, and documents
 // pos: cross-layer type definitions for the Gate dashboard codebase
 // 一旦我被更新，务必更新我的开头注释以及所属文件夹的md。
 export const dashboardSections = ["overview", "sessions", "skills", "files"] as const;
@@ -14,6 +14,23 @@ export interface DashboardHealth {
   summary?: string;
 }
 
+export type ClusterNodeKind = "gate" | "md" | "other";
+export type ClusterNodeOrigin = "local" | "remote";
+
+export interface ClusterNode {
+  id: string;
+  name: string;
+  kind: ClusterNodeKind;
+  origin: ClusterNodeOrigin;
+  status: HealthState;
+  checkedAt: string;
+  summary?: string;
+  supportsSessions: boolean;
+  supportsSkills: boolean;
+  supportsFiles: boolean;
+  supportsWrites: boolean;
+}
+
 export type AgentLifecycleStatus = "idle" | "running" | "error" | "offline";
 
 export interface AgentStatus {
@@ -22,6 +39,8 @@ export interface AgentStatus {
   status: AgentLifecycleStatus;
   summary?: string;
   updatedAt?: string;
+  nodeId?: string;
+  nodeName?: string;
 }
 
 export type SessionState = "active" | "idle" | "completed" | "error";

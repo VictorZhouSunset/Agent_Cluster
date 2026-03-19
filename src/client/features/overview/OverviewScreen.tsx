@@ -1,9 +1,9 @@
-// input: health and agent responses from the dashboard API client
-// output: overview screen states for loading, error, and successful dashboard summaries
+// input: health, node, and agent responses from the dashboard API client
+// output: overview screen states for loading, error, and successful cluster summaries
 // pos: overview feature screen for the client dashboard
 // 一旦我被更新，务必更新我的开头注释以及所属文件夹的md。
 import { useEffect, useState } from "react";
-import type { AgentStatus, DashboardHealth } from "../../../shared/types";
+import type { AgentStatus, ClusterNode, DashboardHealth } from "../../../shared/types";
 import { apiClient } from "../../lib/apiClient";
 
 type OverviewState =
@@ -12,6 +12,7 @@ type OverviewState =
   | {
       status: "success";
       health: DashboardHealth;
+      nodes: ClusterNode[];
       agents: AgentStatus[];
     };
 
@@ -23,8 +24,9 @@ export function OverviewScreen() {
 
     async function loadOverview() {
       try {
-        const [health, agents] = await Promise.all([
+        const [health, nodes, agents] = await Promise.all([
           apiClient.getHealth(),
+          apiClient.getNodes(),
           apiClient.getAgents()
         ]);
 
@@ -35,6 +37,7 @@ export function OverviewScreen() {
         setState({
           status: "success",
           health,
+          nodes,
           agents
         });
       } catch (error) {
@@ -85,6 +88,34 @@ export function OverviewScreen() {
       </section>
 
       <section>
+        <h3>Nodes</h3>
+        {state.status === "success" ? (
+          state.nodes.length > 0 ? (
+            <div style={{ display: "grid", gap: "0.75rem" }}>
+              {state.nodes.map((node) => (
+                <article
+                  key={node.id}
+                  style={{
+                    border: "1px solid #cbd5e1",
+                    borderRadius: "0.75rem",
+                    padding: "0.85rem 1rem",
+                    backgroundColor: "#ffffff"
+                  }}
+                >
+                  <strong>{node.name}</strong>
+                  <div>{node.kind} node</div>
+                  <div>Status: {node.status}</div>
+                  {node.summary ? <div>{node.summary}</div> : null}
+                </article>
+              ))}
+            </div>
+          ) : (
+            <p>No nodes found.</p>
+          )
+        ) : null}
+      </section>
+
+      <section>
         <h3>Agents</h3>
         {state.status === "success" ? (
           state.agents.length > 0 ? (
@@ -92,6 +123,7 @@ export function OverviewScreen() {
               {state.agents.map((agent) => (
                 <li key={agent.id}>
                   <strong>{agent.name}</strong>: {agent.status}
+                  {agent.nodeName ? ` (${agent.nodeName})` : ""}
                 </li>
               ))}
             </ul>

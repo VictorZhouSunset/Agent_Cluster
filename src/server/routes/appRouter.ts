@@ -9,6 +9,7 @@ import { handleAgentsRoute } from "./agents.js";
 import { handleDocumentsRoute } from "./documents.js";
 import { InvalidJsonBodyError } from "./documents.js";
 import { handleHealthRoute } from "./health.js";
+import { handleNodesRoute } from "./nodes.js";
 import { handleSessionDetailRoute, handleSessionsCollectionRoute } from "./sessions.js";
 
 export interface AppRouterDependencies {
@@ -58,7 +59,8 @@ function isInvalidJsonBodyError(error: unknown): error is InvalidJsonBodyError {
 
 export function createAppRouter(dependencies: AppRouterDependencies) {
   return async (request: IncomingMessage, response: ServerResponse) => {
-    const pathname = new URL(request.url ?? "/", "http://localhost").pathname;
+    const requestUrl = new URL(request.url ?? "/", "http://localhost");
+    const pathname = requestUrl.pathname;
 
     if (!isApiPath(pathname)) {
       return false;
@@ -74,6 +76,11 @@ export function createAppRouter(dependencies: AppRouterDependencies) {
 
       if (segments.length === 2 && segments[1] === "agents" && request.method === "GET") {
         await handleAgentsRoute(response, dependencies.openClawProvider);
+        return true;
+      }
+
+      if (segments.length === 2 && segments[1] === "nodes" && request.method === "GET") {
+        await handleNodesRoute(response, dependencies.openClawProvider);
         return true;
       }
 
@@ -96,7 +103,11 @@ export function createAppRouter(dependencies: AppRouterDependencies) {
           return true;
         }
 
-        await handleDocumentsRoute(request, response, dependencies.filesystemProvider, { kind, documentId });
+        await handleDocumentsRoute(request, response, dependencies.filesystemProvider, {
+          kind,
+          documentId,
+          nodeId: requestUrl.searchParams.get("node") ?? undefined
+        });
         return true;
       }
 

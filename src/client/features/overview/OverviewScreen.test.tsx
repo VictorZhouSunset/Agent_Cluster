@@ -69,6 +69,28 @@ describe("OverviewScreen", () => {
           return agentsRequest.promise;
         }
 
+        if (url.endsWith("/api/nodes")) {
+          return Promise.resolve(
+            jsonResponse({
+              data: [
+                {
+                  id: "agent-1",
+                  name: "Gate Node",
+                  kind: "gate",
+                  origin: "local",
+                  status: "healthy",
+                  checkedAt: "2026-03-12T00:00:00.000Z",
+                  summary: "Gate healthy",
+                  supportsSessions: true,
+                  supportsSkills: true,
+                  supportsFiles: true,
+                  supportsWrites: true
+                }
+              ]
+            })
+          );
+        }
+
         return Promise.reject(new Error(`Unhandled request: ${url}`));
       })
     );
@@ -79,6 +101,7 @@ describe("OverviewScreen", () => {
 
     expect(container.textContent).toContain("Loading overview data...");
     expect(container.textContent).toContain("Health");
+    expect(container.textContent).toContain("Nodes");
     expect(container.textContent).toContain("Agents");
 
     await act(async () => {
@@ -150,6 +173,41 @@ describe("OverviewScreen", () => {
           );
         }
 
+        if (url.endsWith("/api/nodes")) {
+          return Promise.resolve(
+            jsonResponse({
+              data: [
+                {
+                  id: "agent-1",
+                  name: "Gate Node",
+                  kind: "gate",
+                  origin: "local",
+                  status: "healthy",
+                  checkedAt: "2026-03-12T00:00:00.000Z",
+                  summary: "Gate healthy",
+                  supportsSessions: true,
+                  supportsSkills: true,
+                  supportsFiles: true,
+                  supportsWrites: true
+                },
+                {
+                  id: "agent-2",
+                  name: "OpenMoose02_MD",
+                  kind: "md",
+                  origin: "remote",
+                  status: "degraded",
+                  checkedAt: "2026-03-12T00:00:00.000Z",
+                  summary: "Coordinator reachable",
+                  supportsSessions: false,
+                  supportsSkills: true,
+                  supportsFiles: true,
+                  supportsWrites: true
+                }
+              ]
+            })
+          );
+        }
+
         return Promise.reject(new Error(`Unhandled request: ${url}`));
       })
     );
@@ -161,6 +219,8 @@ describe("OverviewScreen", () => {
     await vi.waitFor(() => {
       expect(container.textContent).toContain("Status: healthy");
       expect(container.textContent).toContain("Summary: All systems normal");
+      expect(container.textContent).toContain("Gate Node");
+      expect(container.textContent).toContain("OpenMoose02_MD");
       expect(container.textContent).toContain("Planner: idle");
       expect(container.textContent).toContain("Responder: running");
     });
@@ -177,6 +237,14 @@ describe("OverviewScreen", () => {
         }
 
         if (url.endsWith("/api/agents")) {
+          return Promise.resolve(
+            jsonResponse({
+              data: []
+            })
+          );
+        }
+
+        if (url.endsWith("/api/nodes")) {
           return Promise.resolve(
             jsonResponse({
               data: []

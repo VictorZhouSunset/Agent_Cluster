@@ -70,6 +70,39 @@ describe("SkillsScreen", () => {
     const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
       const url = typeof input === "string" ? input : input.toString();
 
+      if (url.endsWith("/api/nodes")) {
+        return Promise.resolve(
+          jsonResponse({
+            data: [
+              {
+                id: "agent-1",
+                name: "Gate Node",
+                kind: "gate",
+                origin: "local",
+                status: "healthy",
+                checkedAt: "2026-03-16T00:00:00.000Z",
+                supportsSessions: true,
+                supportsSkills: true,
+                supportsFiles: true,
+                supportsWrites: true
+              },
+              {
+                id: "agent-2",
+                name: "OpenMoose02_MD",
+                kind: "md",
+                origin: "remote",
+                status: "healthy",
+                checkedAt: "2026-03-16T00:00:00.000Z",
+                supportsSessions: false,
+                supportsSkills: true,
+                supportsFiles: true,
+                supportsWrites: true
+              }
+            ]
+          })
+        );
+      }
+
       if (url.endsWith("/api/skills") && !init?.method) {
         return Promise.resolve(
           jsonResponse({
@@ -124,6 +157,7 @@ describe("SkillsScreen", () => {
 
     await vi.waitFor(() => {
       expect(container.textContent).toContain("Skills");
+      expect(container.textContent).toContain("Node");
       expect(container.textContent).toContain("Planner");
       expect((container.querySelector("textarea") as HTMLTextAreaElement)?.value).toBe(
         "# Planner"
@@ -157,6 +191,27 @@ describe("SkillsScreen", () => {
     const saveRequest = createDeferredResponse();
     const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
       const url = typeof input === "string" ? input : input.toString();
+
+      if (url.endsWith("/api/nodes")) {
+        return Promise.resolve(
+          jsonResponse({
+            data: [
+              {
+                id: "agent-1",
+                name: "Gate Node",
+                kind: "gate",
+                origin: "local",
+                status: "healthy",
+                checkedAt: "2026-03-16T00:00:00.000Z",
+                supportsSessions: true,
+                supportsSkills: true,
+                supportsFiles: true,
+                supportsWrites: true
+              }
+            ]
+          })
+        );
+      }
 
       if (url.endsWith("/api/skills") && !init?.method) {
         return Promise.resolve(
@@ -261,6 +316,137 @@ describe("SkillsScreen", () => {
     await vi.waitFor(() => {
       expect((reviewerButton as HTMLButtonElement).disabled).toBe(false);
       expect(container.textContent).toContain("Changes saved.");
+    });
+  });
+
+  it("switches to a remote node and scopes skill requests to that node", async () => {
+    const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input.toString();
+
+      if (url.endsWith("/api/nodes")) {
+        return Promise.resolve(
+          jsonResponse({
+            data: [
+              {
+                id: "agent-1",
+                name: "Gate Node",
+                kind: "gate",
+                origin: "local",
+                status: "healthy",
+                checkedAt: "2026-03-16T00:00:00.000Z",
+                supportsSessions: true,
+                supportsSkills: true,
+                supportsFiles: true,
+                supportsWrites: true
+              },
+              {
+                id: "agent-2",
+                name: "OpenMoose02_MD",
+                kind: "md",
+                origin: "remote",
+                status: "healthy",
+                checkedAt: "2026-03-16T00:00:00.000Z",
+                supportsSessions: false,
+                supportsSkills: true,
+                supportsFiles: true,
+                supportsWrites: true
+              }
+            ]
+          })
+        );
+      }
+
+      if (url.endsWith("/api/skills") && !url.includes("?") && !init?.method) {
+        return Promise.resolve(
+          jsonResponse({
+            data: [
+              {
+                id: "skill:planner",
+                name: "Planner",
+                path: "skills/planner/SKILL.md",
+                kind: "skill"
+              }
+            ]
+          })
+        );
+      }
+
+      if (url.includes("/api/skills?node=agent-2") && !init?.method) {
+        return Promise.resolve(
+          jsonResponse({
+            data: [
+              {
+                id: "skill:software-dev",
+                name: "software-dev",
+                path: "skills/software-dev/SKILL.md",
+                kind: "skill"
+              }
+            ]
+          })
+        );
+      }
+
+      if (url.endsWith("/api/skills/planner") && !init?.method) {
+        return Promise.resolve(
+          jsonResponse({
+            data: {
+              id: "skill:planner",
+              name: "Planner",
+              path: "skills/planner/SKILL.md",
+              kind: "skill",
+              content: "# Planner"
+            }
+          })
+        );
+      }
+
+      if (url.includes("/api/skills/software-dev?node=agent-2") && !init?.method) {
+        return Promise.resolve(
+          jsonResponse({
+            data: {
+              id: "skill:software-dev",
+              name: "software-dev",
+              path: "skills/software-dev/SKILL.md",
+              kind: "skill",
+              content: "# Remote Skill"
+            }
+          })
+        );
+      }
+
+      return Promise.reject(new Error(`Unhandled request: ${url}`));
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    await act(async () => {
+      root.render(<SkillsScreen />);
+    });
+
+    await vi.waitFor(() => {
+      expect((container.querySelector("select") as HTMLSelectElement)?.value).toBe("agent-1");
+    });
+
+    await act(async () => {
+      const select = container.querySelector("select") as HTMLSelectElement;
+      const setValue = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value")?.set;
+      setValue?.call(select, "agent-2");
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+
+    await vi.waitFor(() => {
+      expect((container.querySelector("textarea") as HTMLTextAreaElement)?.value).toBe("# Remote Skill");
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/skills?node=agent-2", {
+      headers: {
+        Accept: "application/json"
+      }
+    });
+    expect(fetchMock).toHaveBeenCalledWith("/api/skills/software-dev?node=agent-2", {
+      headers: {
+        Accept: "application/json"
+      }
     });
   });
 });

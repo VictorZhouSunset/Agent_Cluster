@@ -7,7 +7,12 @@ import { join } from "node:path";
 import type { EditableDocument, EditableDocumentContent, EditableDocumentId } from "../../../shared/types.js";
 import { EDITABLE_MARKDOWN_PATHS, SKILL_ID_PREFIX } from "./constants.js";
 import { resolveEditableTarget } from "./allowlist.js";
-import type { FilesystemProvider, UpdateEditableDocumentInput } from "./types.js";
+import type {
+  EditableDocumentQuery,
+  FilesystemProvider,
+  ReadEditableDocumentOptions,
+  UpdateEditableDocumentInput
+} from "./types.js";
 
 function isDefined<T>(value: T | null): value is T {
   return value !== null;
@@ -142,6 +147,17 @@ export function createLocalFilesystemProvider(rootDir: string): FilesystemProvid
     return createDocumentContent(rootDir, documentId);
   }
 
+  async function listEditableDocuments(_query?: EditableDocumentQuery) {
+    return listDocuments();
+  }
+
+  async function readEditableDocument(
+    documentId: EditableDocumentId,
+    _options?: ReadEditableDocumentOptions
+  ) {
+    return readDocument(documentId);
+  }
+
   async function writeEditableDocument(input: UpdateEditableDocumentInput) {
     return writeDocument(input.id, input.content);
   }
@@ -150,8 +166,8 @@ export function createLocalFilesystemProvider(rootDir: string): FilesystemProvid
     listDocuments,
     readDocument,
     writeDocument,
-    listEditableDocuments: listDocuments,
-    readEditableDocument: readDocument,
+    listEditableDocuments,
+    readEditableDocument,
     writeEditableDocument
   };
 }
