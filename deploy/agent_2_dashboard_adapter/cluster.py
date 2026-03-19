@@ -1,4 +1,4 @@
-# input: environment configuration, local allowlisted files, and remote node HTTP control-plane APIs
+# input: environment configuration, local OpenClaw-backed documents, and remote node HTTP control-plane APIs
 # output: dashboard-shaped health, node, agent, and document data for the adapter HTTP layer
 # pos: service layer that bridges the dashboard adapter to agent_2 local state and remote cluster nodes
 # 一旦我被更新，务必更新我的开头注释以及所属文件夹的md。
@@ -133,7 +133,7 @@ def load_config(env: Optional[Mapping[str, str]] = None) -> AdapterConfig:
         local_node_name=values.get("DASHBOARD_ADAPTER_NODE_NAME", "OpenMoose02_MD"),
         local_node_kind=values.get("DASHBOARD_ADAPTER_NODE_KIND", "md"),
         root_dir=os.path.abspath(
-            values.get("DASHBOARD_ADAPTER_ROOT_DIR", os.getcwd())
+            values.get("DASHBOARD_ADAPTER_ROOT_DIR", os.path.expanduser("~"))
         ),
         control_url=values.get(
             "DASHBOARD_ADAPTER_CONTROL_URL", "http://127.0.0.1:9001"
@@ -426,9 +426,25 @@ class DashboardAdapterService:
             if not isinstance(match, str):
                 continue
             parts = match.split("/")
-            if len(parts) != 3 or parts[0] != "skills" or parts[2] != "SKILL.md":
+            target = None
+            if (
+                len(parts) == 4
+                and parts[0] == ".openclaw"
+                and parts[1] == "skills"
+                and parts[3] == "SKILL.md"
+            ):
+                target = resolve_document_target("skill", f"managed:{parts[2]}")
+            elif (
+                len(parts) == 5
+                and parts[0] == ".openclaw"
+                and parts[1] == "workspace"
+                and parts[2] == "skills"
+                and parts[4] == "SKILL.md"
+            ):
+                target = resolve_document_target("skill", f"workspace:{parts[3]}")
+
+            if target is None:
                 continue
-            target = resolve_document_target("skill", parts[1])
             documents.append(
                 {
                     "id": target.document_id,

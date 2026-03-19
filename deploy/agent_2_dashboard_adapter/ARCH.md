@@ -1,12 +1,13 @@
 # agent_2_dashboard_adapter
-Deploy this folder to `agent_2` to expose the dashboard-facing adapter on port `9011`.
+Deploy this folder to `md` / `agent_2` to expose the dashboard-facing adapter on port `9011`.
 It keeps dashboard requests separate from the existing `9001` control plane while reusing that protocol underneath.
+It now targets OpenClaw workspace markdown files plus managed and workspace skill stores under the EC2 user's home directory.
 Tests here cover the local allowlist and service-layer aggregation helpers.
 一旦我所属的文件夹有所变化，请更新我。
 
 | file name | position | function |
 | --- | --- | --- |
-| README.md | deployment guide | explains what to copy to `agent_2`, required env vars, and how to run the adapter |
+| README.md | deployment guide | explains what to copy to `md` / `agent_2`, required env vars, and how to run the adapter |
 | ARCH.md | folder contract | documents the deployable package layout |
 | __init__.py | package marker | marks the folder as a Python package |
 | __main__.py | module entry | starts the adapter with `python -m agent_2_dashboard_adapter` |

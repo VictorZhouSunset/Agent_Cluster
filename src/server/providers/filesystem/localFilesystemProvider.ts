@@ -1,11 +1,16 @@
-// input: workspace root path plus allowlisted document ids from route handlers
-// output: local editable document lists, reads, and writes constrained to safe paths
+// input: OpenClaw home-directory base path plus allowlisted document ids from route handlers
+// output: local editable document lists, reads, and writes constrained to safe OpenClaw paths
 // pos: concrete filesystem provider used by the dashboard backend
 // 一旦我被更新，务必更新我的开头注释以及所属文件夹的md。
 import { access, mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import type { EditableDocument, EditableDocumentContent, EditableDocumentId } from "../../../shared/types.js";
-import { EDITABLE_MARKDOWN_PATHS, SKILL_ID_PREFIX } from "./constants.js";
+import {
+  EDITABLE_MARKDOWN_PATHS,
+  MANAGED_SKILL_SCOPE,
+  SKILL_ID_PREFIX,
+  WORKSPACE_SKILL_SCOPE
+} from "./constants.js";
 import { resolveEditableTarget } from "./allowlist.js";
 import type {
   EditableDocumentQuery,
@@ -26,16 +31,9 @@ function isAbsentError(error: unknown): error is NodeJS.ErrnoException {
   return error instanceof Error && "code" in error && error.code === "ENOENT";
 }
 
-function getDocumentName(documentId: EditableDocumentId, relativePath: string) {
-  if (isSkillDocumentId(documentId)) {
-    return documentId.slice(SKILL_ID_PREFIX.length);
-  }
-
-  return relativePath;
-}
-
 async function createDocumentContent(rootDir: string, documentId: EditableDocumentId): Promise<EditableDocumentContent> {
-  const { relativePath } = resolveEditableTarget(documentId);
+  const target = resolveEditableTarget(documentId);
+  const { relativePath } = target;
   const absolutePath = join(rootDir, relativePath);
   const [content, fileStats] = await Promise.all([
     readFile(absolutePath, "utf8"),
@@ -43,34 +41,38 @@ async function createDocumentContent(rootDir: string, documentId: EditableDocume
   ]);
 
   return {
-    id: documentId,
-    name: getDocumentName(documentId, relativePath),
-    path: relativePath,
-    kind: isSkillDocumentId(documentId) ? "skill" : "file",
+    id: target.documentId,
+    name: target.name,
+    path: absolutePath,
+    kind: target.kind,
     updatedAt: fileStats.mtime.toISOString(),
     content
   };
 }
 
-async function listSkillDocuments(rootDir: string): Promise<EditableDocument[]> {
-  const skillsDir = join(rootDir, "skills");
+async function listSkillDocumentsInScope(
+  rootDir: string,
+  scope: typeof MANAGED_SKILL_SCOPE | typeof WORKSPACE_SKILL_SCOPE
+): Promise<EditableDocument[]> {
+  const skillsDir =
+    scope === MANAGED_SKILL_SCOPE
+      ? join(rootDir, ".openclaw", "skills")
+      : join(rootDir, ".openclaw", "workspace", "skills");
 
   try {
     const entries = await readdir(skillsDir, { withFileTypes: true });
     const skills = await Promise.all(entries.filter((entry) => entry.isDirectory()).map(async (entry) => {
-      const documentId = `${SKILL_ID_PREFIX}${entry.name}`;
+      const documentId = `${SKILL_ID_PREFIX}${scope}:${entry.name}`;
 
       try {
-        // Reuse allowlist resolution so skill discovery and direct reads share
-        // the same validation rules.
-        const { relativePath } = resolveEditableTarget(documentId);
-        const absolutePath = join(rootDir, relativePath);
+        const target = resolveEditableTarget(documentId);
+        const absolutePath = join(rootDir, target.relativePath);
         const fileStats = await stat(absolutePath);
 
         return {
-          id: documentId,
-          name: entry.name,
-          path: relativePath,
+          id: target.documentId,
+          name: target.name,
+          path: absolutePath,
           kind: "skill",
           updatedAt: fileStats.mtime.toISOString()
         } satisfies EditableDocument;
@@ -97,14 +99,23 @@ async function listSkillDocuments(rootDir: string): Promise<EditableDocument[]> 
   }
 }
 
+async function listSkillDocuments(rootDir: string): Promise<EditableDocument[]> {
+  const [managedSkills, workspaceSkills] = await Promise.all([
+    listSkillDocumentsInScope(rootDir, MANAGED_SKILL_SCOPE),
+    listSkillDocumentsInScope(rootDir, WORKSPACE_SKILL_SCOPE)
+  ]);
+  return [...managedSkills, ...workspaceSkills].sort((left, right) => left.id.localeCompare(right.id));
+}
+
 async function getFileDocument(rootDir: string, documentId: EditableDocumentId, relativePath: string) {
   try {
-    const fileStats = await stat(join(rootDir, relativePath));
+    const absolutePath = join(rootDir, relativePath);
+    const fileStats = await stat(absolutePath);
 
     return {
       id: documentId,
-      name: relativePath,
-      path: relativePath,
+      name: relativePath.split("/").at(-1) ?? relativePath,
+      path: absolutePath,
       kind: "file",
       updatedAt: fileStats.mtime.toISOString()
     } satisfies EditableDocument;
@@ -137,11 +148,8 @@ export function createLocalFilesystemProvider(rootDir: string): FilesystemProvid
     const { relativePath } = resolveEditableTarget(documentId);
     const absolutePath = join(rootDir, relativePath);
 
-    if (isSkillDocumentId(documentId)) {
-      await mkdir(join(rootDir, "skills", documentId.slice(SKILL_ID_PREFIX.length)), { recursive: true });
-    }
-
     await access(join(rootDir));
+    await mkdir(dirname(absolutePath), { recursive: true });
     await writeFile(absolutePath, content, "utf8");
 
     return createDocumentContent(rootDir, documentId);

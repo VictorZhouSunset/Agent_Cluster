@@ -6,27 +6,60 @@ import type { EditableDocumentId } from "../../../shared/types.js";
 import {
   EDITABLE_MARKDOWN_PATHS,
   isFixedEditableDocumentId,
+  MANAGED_SKILL_SCOPE,
   SKILL_ID_PREFIX,
-  SKILL_NAME_PATTERN
+  SKILL_NAME_PATTERN,
+  WORKSPACE_SKILL_SCOPE
 } from "./constants.js";
 
 export interface EditableTarget {
+  documentId: EditableDocumentId;
+  kind: "file" | "skill";
+  name: string;
   relativePath: string;
+}
+
+function isAllowedSkillName(skillName: string) {
+  return SKILL_NAME_PATTERN.test(skillName);
+}
+
+function getSkillDisplayName(skillName: string, scope: string) {
+  return scope === MANAGED_SKILL_SCOPE ? `${skillName} (managed)` : `${skillName} (workspace)`;
 }
 
 export function resolveEditableTarget(documentId: EditableDocumentId): EditableTarget {
   if (isFixedEditableDocumentId(documentId)) {
-    return { relativePath: EDITABLE_MARKDOWN_PATHS[documentId] };
+    return {
+      documentId,
+      kind: "file",
+      name: EDITABLE_MARKDOWN_PATHS[documentId].split("/").at(-1) ?? EDITABLE_MARKDOWN_PATHS[documentId],
+      relativePath: EDITABLE_MARKDOWN_PATHS[documentId]
+    };
   }
 
   if (!documentId.startsWith(SKILL_ID_PREFIX)) {
     throw new Error(`Editable document id "${documentId}" is not allowlisted.`);
   }
 
-  const skillName = documentId.slice(SKILL_ID_PREFIX.length);
-  if (!SKILL_NAME_PATTERN.test(skillName)) {
+  const rawSkillId = documentId.slice(SKILL_ID_PREFIX.length);
+  const segments = rawSkillId.split(":");
+  const hasExplicitScope = segments.length > 1 && segments[0] !== "";
+  const scope = hasExplicitScope ? segments[0] : WORKSPACE_SKILL_SCOPE;
+  const skillName = hasExplicitScope ? segments.slice(1).join(":") : rawSkillId;
+
+  if (![MANAGED_SKILL_SCOPE, WORKSPACE_SKILL_SCOPE].includes(scope) || !isAllowedSkillName(skillName)) {
     throw new Error(`Editable document id "${documentId}" is not allowlisted.`);
   }
 
-  return { relativePath: `skills/${skillName}/SKILL.md` };
+  const relativePath =
+    scope === MANAGED_SKILL_SCOPE
+      ? `.openclaw/skills/${skillName}/SKILL.md`
+      : `.openclaw/workspace/skills/${skillName}/SKILL.md`;
+
+  return {
+    documentId: `${SKILL_ID_PREFIX}${scope}:${skillName}`,
+    kind: "skill",
+    name: getSkillDisplayName(skillName, scope),
+    relativePath
+  };
 }

@@ -1,7 +1,7 @@
 # filesystem
 Allowlisted document storage layer for the backend.
-Owns id validation, path resolution, and local file reads/writes.
-Interfaces here now support optional node-scoped routing on top of the local provider.
+Owns id validation, OpenClaw path resolution, and local file reads/writes.
+Interfaces here support workspace markdown files plus managed and workspace skill stores, with optional node-scoped routing on top.
 一旦我所属的文件夹有所变化，请更新我。
 
 | file name | position | function |

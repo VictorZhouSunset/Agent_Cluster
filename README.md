@@ -2,6 +2,21 @@
 
 Gate Dashboard is a Linux-first Node app that runs on the same EC2 instance as OpenClaw and serves a React dashboard on port `3000`.
 
+## Current Deployment Shape
+
+The currently used cluster naming is:
+
+- `cio` = `agent_1`
+- `md` = `agent_2`
+- `others` = worker agents such as `agent_3`, `agent_4`, `agent_5`, and later `agent_x`
+
+The current deployed layout is:
+
+- `cio` / `agent_1`: this repo, deployed as `/home/ec2-user/Agent_Cluster_v2`
+- `md` / `agent_2`: the adapter from `deploy/agent_2_dashboard_adapter`
+- `/opt/.../agent_server.py`: colleague-owned runtime on `md` and worker nodes
+- OpenClaw runtime under `/home/ec2-user/.nvm/...`, `/home/ec2-user/.openclaw`, and `/tmp/openclaw`
+
 ## What This Project Does
 
 The first version supports:
@@ -14,6 +29,12 @@ The first version supports:
 
 OpenClaw remains the source of truth for health and session data. The dashboard should sit behind the entry server and reverse proxy, and OpenClaw itself should not be exposed directly to the public internet.
 
+The editable document roots in the current deployment are:
+
+- fixed markdown files from `/home/ec2-user/.openclaw/workspace`
+- managed or local skills from `/home/ec2-user/.openclaw/skills`
+- workspace skills from `/home/ec2-user/.openclaw/workspace/skills`
+
 ## Important Safety Rules
 
 - Do not open port `3000` directly to the public internet.
@@ -23,7 +44,7 @@ OpenClaw remains the source of truth for health and session data. The dashboard 
 
 ## Local Workflow
 
-This repository is developed for Ubuntu EC2 first. Local desktop work is supported for unit and integration checks, but Linux and OpenClaw are not installed in this workspace and E2E is intentionally out of scope for the current phase.
+This repository is developed for Amazon Linux EC2 first. Local desktop work is supported for unit and integration checks, but Linux and OpenClaw are not installed in this workspace and E2E is intentionally out of scope for the current phase.
 
 Use pnpm for all package management:
 
@@ -32,7 +53,22 @@ pnpm install
 pnpm dev
 ```
 
+## Current Runtime Paths
+
+These are the currently observed OpenClaw paths relevant to this project:
+
+- executable: `/home/ec2-user/.nvm/versions/node/v22.22.1/bin/openclaw`
+- installation directory: `/home/ec2-user/.nvm/versions/node/v22.22.1/lib/node_modules/openclaw`
+- user configuration: `/home/ec2-user/.openclaw`
+- workspace: `/home/ec2-user/.openclaw/workspace`
+- managed or local skills: `/home/ec2-user/.openclaw/skills`
+- workspace skills: `/home/ec2-user/.openclaw/workspace/skills`
+- logs and temp files: `/tmp/openclaw`
+- observed user service unit: `/run/user/1000/systemd/units/invocation:openclaw-gateway.service`
+
 ## AWS Setup For A Non-Technical Operator
+
+The section below is an older single-node beginner path and should be treated as background reference, not the current live deployment shape described above.
 
 This section assumes:
 
@@ -379,28 +415,36 @@ You can override the default port with `PORT`, though the intended default remai
 
 For the multi-node cluster setup discussed in this repo:
 
-- `agent_1` keeps running the Node dashboard on `3000`
-- `agent_2` should run the Python dashboard adapter on `9011`
-- `agent_3` and future `other` nodes stay behind their existing `9001` control-plane APIs
+- `cio` / `agent_1` keeps running the Node dashboard on `3000`
+- `md` / `agent_2` runs the Python dashboard adapter on `9011`
+- `others` such as `agent_3` and future worker nodes stay behind their existing `9001` control-plane APIs
 
-The folder to deploy on `agent_2` is:
+The folder to deploy on `md` / `agent_2` is:
 
 ```text
 deploy/agent_2_dashboard_adapter
 ```
 
-On `agent_1`, point the dashboard backend at that adapter with:
+On `cio` / `agent_1`, point the dashboard backend at that adapter with:
 
 ```bash
 export GATE_CLUSTER_ADAPTER_BASE_URL=http://<agent-2-private-ip>:9011
 export GATE_CLUSTER_ADAPTER_SECRET=<same dashboard adapter secret configured on agent_2>
 ```
 
-On `agent_2`, read the adapter-specific setup instructions in:
+On `md` / `agent_2`, read the adapter-specific setup instructions in:
 
 ```text
 deploy/agent_2_dashboard_adapter/README.md
 ```
+
+## Current EC2 Install Targets
+
+When following the current live structure, use these install locations:
+
+- `cio` / `agent_1`: `/home/ec2-user/Agent_Cluster_v2`
+- `md` / `agent_2`: copy `deploy/agent_2_dashboard_adapter` to a deployment folder such as `/home/ec2-user/agent_2_dashboard_adapter`
+- colleague-owned agent runtime: `/opt/.../agent_server.py`
 
 ## Validation
 

@@ -17,18 +17,22 @@ describe("app router", () => {
   let clientDir: string;
   let filesystemProvider: FilesystemProvider;
   let openClawProvider: OpenClawProvider;
+  let workspaceDir: string;
+  let workspaceSkillsDir: string;
 
   beforeEach(async () => {
     rootDir = await mkdtemp(join(tmpdir(), "gate-dashboard-routes-"));
     clientDir = await mkdtemp(join(tmpdir(), "gate-dashboard-client-"));
+    workspaceDir = join(rootDir, ".openclaw", "workspace");
+    workspaceSkillsDir = join(workspaceDir, "skills");
 
+    await mkdir(join(workspaceSkillsDir, "planner"), { recursive: true });
     await Promise.all([
       writeFile(join(clientDir, "index.html"), "<!doctype html><html><body>Dashboard Shell</body></html>"),
-      writeFile(join(rootDir, "AGENTS.md"), "# Agents"),
-      writeFile(join(rootDir, "USER.md"), "# User"),
-      mkdir(join(rootDir, "skills", "planner"), { recursive: true })
+      writeFile(join(workspaceDir, "AGENTS.md"), "# Agents"),
+      writeFile(join(workspaceDir, "USER.md"), "# User")
     ]);
-    await writeFile(join(rootDir, "skills", "planner", "SKILL.md"), "# Planner");
+    await writeFile(join(workspaceSkillsDir, "planner", "SKILL.md"), "# Planner");
 
     filesystemProvider = createLocalFilesystemProvider(rootDir);
     openClawProvider = {
@@ -213,12 +217,12 @@ describe("app router", () => {
       expect.objectContaining({
         id: "agents-md",
         kind: "file",
-        path: "AGENTS.md"
+        path: join(workspaceDir, "AGENTS.md")
       }),
       expect.objectContaining({
         id: "user-md",
         kind: "file",
-        path: "USER.md"
+        path: join(workspaceDir, "USER.md")
       })
     ]);
   });
@@ -233,7 +237,7 @@ describe("app router", () => {
     const saveResponse = await request(app).put("/api/files/agents-md").send({ content: "# Updated Agents" });
     expect(saveResponse.status).toBe(200);
     expect(saveResponse.body.data.content).toBe("# Updated Agents");
-    await expect(readFile(join(rootDir, "AGENTS.md"), "utf8")).resolves.toBe("# Updated Agents");
+    await expect(readFile(join(workspaceDir, "AGENTS.md"), "utf8")).resolves.toBe("# Updated Agents");
   });
 
   it("passes the requested node id through document routes", async () => {
@@ -293,9 +297,9 @@ describe("app router", () => {
     expect(response.status).toBe(200);
     expect(response.body.data).toEqual([
       expect.objectContaining({
-        id: "skill:planner",
+        id: "skill:workspace:planner",
         kind: "skill",
-        path: "skills/planner/SKILL.md"
+        path: join(workspaceSkillsDir, "planner", "SKILL.md")
       })
     ]);
   });
@@ -310,7 +314,7 @@ describe("app router", () => {
     const saveResponse = await request(app).put("/api/skills/planner").send({ content: "# Updated Planner" });
     expect(saveResponse.status).toBe(200);
     expect(saveResponse.body.data.content).toBe("# Updated Planner");
-    await expect(readFile(join(rootDir, "skills", "planner", "SKILL.md"), "utf8")).resolves.toBe("# Updated Planner");
+    await expect(readFile(join(workspaceSkillsDir, "planner", "SKILL.md"), "utf8")).resolves.toBe("# Updated Planner");
   });
 
   it("returns 404 for an unknown file id", async () => {

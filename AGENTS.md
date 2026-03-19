@@ -1,174 +1,132 @@
-\# AGENTS.md
+# AGENTS.md
 
+## Environment
 
+- Target OS: Amazon Linux 2023
+- Target Node.js: v22.22.1
+  Reference: https://docs.openclaw.ai/install/node
+- Target OpenClaw version: 2026.3.11
+  Reference: https://github.com/openclaw/openclaw/releases
+- This project is developed for Linux EC2 first, not for local desktop first without Linux or OpenClaw, so you cannot test E2E and do not need to do so now
 
-\## Environment
+## Current cluster naming
 
+- `cio` and `agent_1` refer to the same machine
+- `md` and `agent_2` refer to the same machine
+- `others` refers to worker agents such as `agent_3`, `agent_4`, `agent_5`, and later `agent_x`
 
+## Current deployment layout
 
-\- Target OS: Ubuntu 24.04 LTS  
+- The main dashboard repo is installed on `cio` / `agent_1`
+- The deployed folder name on `cio` / `agent_1` is `/home/ec2-user/Agent_Cluster_v2`
+- The Python adapter in `deploy/agent_2_dashboard_adapter` is installed on `md` / `agent_2`
+- The colleague-owned agent runtime lives under `/opt` and contains `agent_server.py`; treat it as an external dependency of this repo
+- The dashboard on `cio` / `agent_1` listens on port `3000`
+- The adapter on `md` / `agent_2` listens on port `9011`
+- Existing cluster control-plane APIs continue to listen on port `9001`
 
-&#x20; Reference: https://discourse.ubuntu.com/t/ubuntu-24-04-lts-noble-numbat-release-notes/39890
+## Installed paths relevant to this project
 
-\- Target Node.js: 24  
+- OpenClaw executable:
+  `/home/ec2-user/.nvm/versions/node/v22.22.1/bin/openclaw`
+- OpenClaw installation directory:
+  `/home/ec2-user/.nvm/versions/node/v22.22.1/lib/node_modules/openclaw`
+- OpenClaw user configuration and workspace:
+  `/home/ec2-user/.openclaw`
+  `/home/ec2-user/.openclaw/workspace`
+- Fixed editable markdown files live in:
+  `/home/ec2-user/.openclaw/workspace`
+- Managed or local skills live in:
+  `/home/ec2-user/.openclaw/skills`
+- Workspace skills live in:
+  `/home/ec2-user/.openclaw/workspace/skills`
+- OpenClaw logs and temporary files:
+  `/tmp/openclaw`
+- Observed OpenClaw user service unit:
+  `/run/user/1000/systemd/units/invocation:openclaw-gateway.service`
 
-&#x20; Reference: https://docs.openclaw.ai/install/node
-
-\- Target OpenClaw version: 2026.3.11  
-
-&#x20; Reference: https://github.com/openclaw/openclaw/releases
-
-\- This project is developed for Linux EC2 first, not for local desktop first without Linux or Openclaw, so you cannot test e2e and don't need to do so now
-
-
-
-\## Task scope
-
-
+## Task scope
 
 Build a custom Dashboard for the Gate node.
 
-
-
 The Dashboard must read local OpenClaw data and provide:
 
-
-
-\- health
-
-\- sessions
-
-\- skills
-
-\- selected markdown files
-
-
+- health
+- sessions
+- skills
+- selected markdown files
 
 The first version of the Dashboard must support:
 
+- viewing Agent status
+- viewing Session list and Session content
+- viewing and editing Skills
+- viewing and editing selected markdown files
 
+## Architecture rules
 
-\- viewing Agent status
+- The Dashboard runs on the same EC2 as OpenClaw
+- The Dashboard listens on port `3000`
+- OpenClaw must not be exposed directly to the public internet
+- End users must not access port `3000` directly
+- Public traffic should go through the entry server and reverse proxy
 
-\- viewing Session list and Session content
+## Ownership boundaries
 
-\- viewing and editing Skills
+- This repo owns the Node dashboard on `cio` / `agent_1`
+- This repo also owns the Python adapter under `deploy/agent_2_dashboard_adapter` for `md` / `agent_2`
+- This repo does not own the colleague's `agent_server.py` runtime under `/opt`; integrate with it carefully rather than reshaping its protocol casually
+- Treat OpenClaw runtime state as the source of truth and the colleague-owned agent runtime as an external system this repo must interoperate with
 
-\- viewing and editing selected markdown files
+## Data rules
 
+- Read OpenClaw runtime state from local OpenClaw interfaces
+- Treat OpenClaw as the source of truth for session and health data
+  Reference: https://docs.openclaw.ai/concepts/session
+- Skills and selected markdown files may be edited carefully
+  Reference: https://docs.openclaw.ai/tools/skills
+- Do not directly modify raw session transcript/store files unless explicitly requested
 
-
-\## Architecture rules
-
-
-
-\- The Dashboard runs on the same EC2 as OpenClaw
-
-\- The Dashboard listens on port 3000
-
-\- OpenClaw must not be exposed directly to the public internet
-
-\- End users must not access port 3000 directly
-
-\- Public traffic should go through the entry server and reverse proxy
-
-
-
-\## Data rules
-
-
-
-\- Read OpenClaw runtime state from local OpenClaw interfaces
-
-\- Treat OpenClaw as the source of truth for session and health data  
-
-&#x20; Reference: https://docs.openclaw.ai/concepts/session
-
-\- Skills and selected markdown files may be edited carefully  
-
-&#x20; Reference: https://docs.openclaw.ai/tools/skills
-
-\- Do not directly modify raw session transcript/store files unless explicitly requested
-
-
-
-\## File scope
-
-
+## File scope
 
 Editable files may include:
 
+- `SOUL.md`
+- `BOOTSTRAP.md`
+- `HEARTBEAT.md`
+- `IDENTITY.md`
+- `USER.md`
+- `AGENTS.md`
+- `TOOLS.md`
+- `~/.openclaw/skills/*/SKILL.md`
+- `~/.openclaw/workspace/skills/*/SKILL.md`
 
+## Change rules
 
-\- SOUL.md
+- Keep changes minimal and targeted
+- Do not introduce billing, cluster provisioning, or unrelated AWS logic into this repo
+- Do not add OpenClaw built-in dashboard integration unless explicitly requested
+- Prefer implementation that works cleanly on Amazon Linux 2023
 
-\- USER.md
+## Dependency tools
 
-\- AGENTS.md
+- Use `pnpm` for this Dashboard project
+- Do not introduce `uv` unless a real Python subproject is added
 
-\- TOOLS.md
-
-\- skills/\*/SKILL.md
-
-
-
-\## Change rules
-
-
-
-\- Keep changes minimal and targeted
-
-\- Do not introduce billing, cluster provisioning, or unrelated AWS logic
-
-\- Do not add OpenClaw built-in dashboard integration unless explicitly requested
-
-\- Prefer implementation that works cleanly on Ubuntu Linux
-
-
-
-\## Dependency tools
-
-
-
-\- Use pnpm for this Dashboard project
-
-\- Do not introduce uv unless a real Python subproject is added
-
-
-
-\## Validation
-
-
+## Validation
 
 After code changes:
 
+1. install dependencies
+2. run lint if present
+3. run typecheck if present
+4. run build if present
+5. report failures clearly
 
+## References
 
-1\. install dependencies
-
-2\. run lint if present
-
-3\. run typecheck if present
-
-4\. run build if present
-
-5\. report failures clearly
-
-
-
-\## References
-
-
-
-\- Codex AGENTS.md guide: https://developers.openai.com/codex/guides/agents-md/
-
-\- OpenClaw install docs: https://docs.openclaw.ai/install
-
-\- OpenClaw Node docs: https://docs.openclaw.ai/install/node
-
-\- OpenClaw Linux docs: https://docs.openclaw.ai/platforms/linux
-
-\- OpenClaw releases: https://github.com/openclaw/openclaw/releases
-
-\- Ubuntu 24.04 LTS release notes: https://discourse.ubuntu.com/t/ubuntu-24-04-lts-noble-numbat-release-notes/39890
-
+- Codex AGENTS.md guide: https://developers.openai.com/codex/guides/agents-md/
+- OpenClaw install docs: https://docs.openclaw.ai/install
+- OpenClaw Node docs: https://docs.openclaw.ai/install/node
+- OpenClaw Linux docs: https://docs.openclaw.ai/platforms/linux
+- OpenClaw releases: https://github.com/openclaw/openclaw/releases

@@ -6,12 +6,19 @@ import { createLocalFilesystemProvider } from "./localFilesystemProvider";
 
 describe("local filesystem provider", () => {
   let rootDir: string;
+  let workspaceDir: string;
+  let managedSkillsDir: string;
+  let workspaceSkillsDir: string;
 
   beforeEach(async () => {
     rootDir = await mkdtemp(join(tmpdir(), "gate-dashboard-"));
-    await mkdir(join(rootDir, "skills", "planner"), { recursive: true });
-    await writeFile(join(rootDir, "AGENTS.md"), "# Agents");
-    await writeFile(join(rootDir, "skills", "planner", "SKILL.md"), "# Planner");
+    workspaceDir = join(rootDir, ".openclaw", "workspace");
+    managedSkillsDir = join(rootDir, ".openclaw", "skills");
+    workspaceSkillsDir = join(workspaceDir, "skills");
+
+    await mkdir(join(workspaceSkillsDir, "planner"), { recursive: true });
+    await writeFile(join(workspaceDir, "AGENTS.md"), "# Agents");
+    await writeFile(join(workspaceSkillsDir, "planner", "SKILL.md"), "# Planner");
   });
 
   it("reads an allowlisted file", async () => {
@@ -20,7 +27,7 @@ describe("local filesystem provider", () => {
 
     expect(result.id).toBe("agents-md");
     expect(result.kind).toBe("file");
-    expect(result.path).toBe("AGENTS.md");
+    expect(result.path).toBe(join(workspaceDir, "AGENTS.md"));
     expect(result.content).toContain("# Agents");
     expect(result.updatedAt).toMatch(/\d{4}-\d{2}-\d{2}T/);
   });
@@ -28,50 +35,66 @@ describe("local filesystem provider", () => {
   it("writes an allowlisted skill", async () => {
     const provider = createLocalFilesystemProvider(rootDir);
 
-    await provider.writeDocument("skill:planner", "# Updated");
-    const result = await provider.readDocument("skill:planner");
+    await provider.writeDocument("skill:workspace:planner", "# Updated");
+    const result = await provider.readDocument("skill:workspace:planner");
 
     expect(result.content).toContain("Updated");
   });
 
-  it("lists allowlisted documents with stable ordering and dto fields", async () => {
-    await mkdir(join(rootDir, "skills", "alpha"), { recursive: true });
-    await writeFile(join(rootDir, "skills", "alpha", "SKILL.md"), "# Alpha");
+  it("lists allowlisted documents from the OpenClaw workspace and both skill roots", async () => {
+    await mkdir(join(workspaceSkillsDir, "alpha"), { recursive: true });
+    await mkdir(join(managedSkillsDir, "reviewer"), { recursive: true });
+    await writeFile(join(workspaceSkillsDir, "alpha", "SKILL.md"), "# Alpha");
+    await writeFile(join(managedSkillsDir, "reviewer", "SKILL.md"), "# Reviewer");
 
     const provider = createLocalFilesystemProvider(rootDir);
     const result = await provider.listDocuments();
 
-    expect(result.map((document) => document.id)).toEqual(["agents-md", "skill:alpha", "skill:planner"]);
+    expect(result.map((document) => document.id)).toEqual([
+      "agents-md",
+      "skill:managed:reviewer",
+      "skill:workspace:alpha",
+      "skill:workspace:planner"
+    ]);
     expect(result).toEqual([
       expect.objectContaining({
         id: "agents-md",
         kind: "file",
-        path: "AGENTS.md",
+        path: join(workspaceDir, "AGENTS.md"),
         updatedAt: expect.stringMatching(/\d{4}-\d{2}-\d{2}T/)
       }),
       expect.objectContaining({
-        id: "skill:alpha",
+        id: "skill:managed:reviewer",
         kind: "skill",
-        path: "skills/alpha/SKILL.md",
+        name: "reviewer (managed)",
+        path: join(managedSkillsDir, "reviewer", "SKILL.md"),
         updatedAt: expect.stringMatching(/\d{4}-\d{2}-\d{2}T/)
       }),
       expect.objectContaining({
-        id: "skill:planner",
+        id: "skill:workspace:alpha",
         kind: "skill",
-        path: "skills/planner/SKILL.md",
+        name: "alpha (workspace)",
+        path: join(workspaceSkillsDir, "alpha", "SKILL.md"),
+        updatedAt: expect.stringMatching(/\d{4}-\d{2}-\d{2}T/)
+      }),
+      expect.objectContaining({
+        id: "skill:workspace:planner",
+        kind: "skill",
+        name: "planner (workspace)",
+        path: join(workspaceSkillsDir, "planner", "SKILL.md"),
         updatedAt: expect.stringMatching(/\d{4}-\d{2}-\d{2}T/)
       })
     ]);
   });
 
   it("skips invalid skill directories without dropping valid skills", async () => {
-    await mkdir(join(rootDir, "skills", "bad name"), { recursive: true });
-    await writeFile(join(rootDir, "skills", "bad name", "SKILL.md"), "# Invalid");
+    await mkdir(join(workspaceSkillsDir, "bad name"), { recursive: true });
+    await writeFile(join(workspaceSkillsDir, "bad name", "SKILL.md"), "# Invalid");
 
     const provider = createLocalFilesystemProvider(rootDir);
     const result = await provider.listDocuments();
 
-    expect(result.map((document) => document.id)).toContain("skill:planner");
+    expect(result.map((document) => document.id)).toContain("skill:workspace:planner");
     expect(result.map((document) => document.id)).not.toContain("skill:bad name");
   });
 
@@ -83,19 +106,21 @@ describe("local filesystem provider", () => {
 
   it("treats missing skills directory as empty but surfaces unexpected listing failures", async () => {
     const withoutSkillsRoot = await mkdtemp(join(tmpdir(), "gate-dashboard-no-skills-"));
-    await writeFile(join(withoutSkillsRoot, "AGENTS.md"), "# Agents");
+    await mkdir(join(withoutSkillsRoot, ".openclaw", "workspace"), { recursive: true });
+    await writeFile(join(withoutSkillsRoot, ".openclaw", "workspace", "AGENTS.md"), "# Agents");
 
     await expect(createLocalFilesystemProvider(withoutSkillsRoot).listDocuments()).resolves.toEqual([
       expect.objectContaining({
         id: "agents-md",
         kind: "file",
-        path: "AGENTS.md"
+        path: join(withoutSkillsRoot, ".openclaw", "workspace", "AGENTS.md")
       })
     ]);
 
     const invalidSkillsRoot = await mkdtemp(join(tmpdir(), "gate-dashboard-invalid-skills-"));
-    await writeFile(join(invalidSkillsRoot, "AGENTS.md"), "# Agents");
-    await writeFile(join(invalidSkillsRoot, "skills"), "not a directory");
+    await mkdir(join(invalidSkillsRoot, ".openclaw", "workspace"), { recursive: true });
+    await writeFile(join(invalidSkillsRoot, ".openclaw", "workspace", "AGENTS.md"), "# Agents");
+    await writeFile(join(invalidSkillsRoot, ".openclaw", "workspace", "skills"), "not a directory");
 
     await expect(createLocalFilesystemProvider(invalidSkillsRoot).listDocuments()).rejects.toMatchObject({
       code: "ENOTDIR"

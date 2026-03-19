@@ -36,21 +36,36 @@ class AllowlistTests(unittest.TestCase):
 
     def test_list_read_and_write_local_documents(self) -> None:
         with tempfile.TemporaryDirectory() as root_dir:
-            os.makedirs(os.path.join(root_dir, "skills", "planner"))
-            with open(os.path.join(root_dir, "AGENTS.md"), "w", encoding="utf-8") as handle:
+            workspace_dir = os.path.join(root_dir, ".openclaw", "workspace")
+            workspace_skills_dir = os.path.join(workspace_dir, "skills")
+            managed_skills_dir = os.path.join(root_dir, ".openclaw", "skills")
+            os.makedirs(os.path.join(workspace_skills_dir, "planner"))
+            os.makedirs(os.path.join(managed_skills_dir, "reviewer"))
+            with open(
+                os.path.join(workspace_dir, "AGENTS.md"), "w", encoding="utf-8"
+            ) as handle:
                 handle.write("# Agents")
             with open(
-                os.path.join(root_dir, "skills", "planner", "SKILL.md"),
+                os.path.join(workspace_skills_dir, "planner", "SKILL.md"),
                 "w",
                 encoding="utf-8",
             ) as handle:
                 handle.write("# Planner")
+            with open(
+                os.path.join(managed_skills_dir, "reviewer", "SKILL.md"),
+                "w",
+                encoding="utf-8",
+            ) as handle:
+                handle.write("# Reviewer")
 
             listed_files = list_local_documents(root_dir, "file")
             listed_skills = list_local_documents(root_dir, "skill")
 
             self.assertEqual([item["id"] for item in listed_files], ["agents-md"])
-            self.assertEqual([item["id"] for item in listed_skills], ["skill:planner"])
+            self.assertEqual(
+                [item["id"] for item in listed_skills],
+                ["skill:managed:reviewer", "skill:workspace:planner"],
+            )
 
             read_skill = read_local_document(root_dir, "skill", "planner")
             self.assertEqual(read_skill["content"], "# Planner")
@@ -59,6 +74,12 @@ class AllowlistTests(unittest.TestCase):
                 root_dir, "file", "agents-md", "# Updated Agents"
             )
             self.assertEqual(written_file["content"], "# Updated Agents")
+            self.assertEqual(
+                os.path.normpath(written_file["path"]),
+                os.path.normpath(
+                    os.path.join(root_dir, ".openclaw", "workspace", "AGENTS.md")
+                ),
+            )
 
 
 if __name__ == "__main__":

@@ -69,7 +69,12 @@ class DashboardAdapterServiceTests(unittest.TestCase):
 
     def test_list_nodes_marks_unreachable_remote_nodes_offline(self) -> None:
         with tempfile.TemporaryDirectory() as root_dir:
-            with open(os.path.join(root_dir, "AGENTS.md"), "w", encoding="utf-8") as handle:
+            os.makedirs(os.path.join(root_dir, ".openclaw", "workspace"), exist_ok=True)
+            with open(
+                os.path.join(root_dir, ".openclaw", "workspace", "AGENTS.md"),
+                "w",
+                encoding="utf-8",
+            ) as handle:
                 handle.write("# Agents")
 
             service = self._create_service(root_dir)
@@ -90,7 +95,12 @@ class DashboardAdapterServiceTests(unittest.TestCase):
 
     def test_remote_document_calls_use_remote_passthrough_helpers(self) -> None:
         with tempfile.TemporaryDirectory() as root_dir:
-            with open(os.path.join(root_dir, "AGENTS.md"), "w", encoding="utf-8") as handle:
+            os.makedirs(os.path.join(root_dir, ".openclaw", "workspace"), exist_ok=True)
+            with open(
+                os.path.join(root_dir, ".openclaw", "workspace", "AGENTS.md"),
+                "w",
+                encoding="utf-8",
+            ) as handle:
                 handle.write("# Agents")
 
             service = self._create_service(root_dir)

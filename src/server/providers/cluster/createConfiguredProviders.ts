@@ -1,4 +1,4 @@
-// input: process environment, workspace root, and local provider factories
+// input: process environment, fallback filesystem root, and local provider factories
 // output: configured dashboard providers with optional remote adapter composition
 // pos: provider bootstrap helper for server startup and tests
 // 一旦我被更新，务必更新我的开头注释以及所属文件夹的md。
@@ -13,6 +13,8 @@ import { createRemoteDashboardAdapterClient } from "./remoteDashboardAdapterClie
 export interface ClusterEnvironment {
   GATE_CLUSTER_ADAPTER_BASE_URL?: string;
   GATE_CLUSTER_ADAPTER_SECRET?: string;
+  GATE_OPENCLAW_BASE_DIR?: string;
+  HOME?: string;
 }
 
 export interface ConfiguredProviders {
@@ -36,7 +38,9 @@ export function createConfiguredProviders(
   env: ClusterEnvironment = process.env
 ): ConfiguredProviders {
   const remoteAdapterClient = createRemoteAdapterClient(env);
-  const localFilesystemProvider = createLocalFilesystemProvider(rootDir);
+  const localFilesystemProvider = createLocalFilesystemProvider(
+    env.GATE_OPENCLAW_BASE_DIR ?? env.HOME ?? rootDir
+  );
   const localOpenClawProvider = createLocalOpenClawProvider();
 
   return {

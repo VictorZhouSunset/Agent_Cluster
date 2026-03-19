@@ -5,17 +5,23 @@
 import type { EditableDocumentId } from "../../../shared/types.js";
 
 type FixedEditableDocumentPaths = {
-  "agents-md": "AGENTS.md";
-  "soul-md": "SOUL.md";
-  "tools-md": "TOOLS.md";
-  "user-md": "USER.md";
+  "agents-md": ".openclaw/workspace/AGENTS.md";
+  "bootstrap-md": ".openclaw/workspace/BOOTSTRAP.md";
+  "heartbeat-md": ".openclaw/workspace/HEARTBEAT.md";
+  "identity-md": ".openclaw/workspace/IDENTITY.md";
+  "soul-md": ".openclaw/workspace/SOUL.md";
+  "tools-md": ".openclaw/workspace/TOOLS.md";
+  "user-md": ".openclaw/workspace/USER.md";
 };
 
 export const EDITABLE_MARKDOWN_PATHS = Object.freeze({
-  "agents-md": "AGENTS.md",
-  "soul-md": "SOUL.md",
-  "tools-md": "TOOLS.md",
-  "user-md": "USER.md"
+  "agents-md": ".openclaw/workspace/AGENTS.md",
+  "bootstrap-md": ".openclaw/workspace/BOOTSTRAP.md",
+  "heartbeat-md": ".openclaw/workspace/HEARTBEAT.md",
+  "identity-md": ".openclaw/workspace/IDENTITY.md",
+  "soul-md": ".openclaw/workspace/SOUL.md",
+  "tools-md": ".openclaw/workspace/TOOLS.md",
+  "user-md": ".openclaw/workspace/USER.md"
 } as const satisfies FixedEditableDocumentPaths);
 
 export type FixedEditableDocumentId = keyof typeof EDITABLE_MARKDOWN_PATHS;
@@ -24,4 +30,6 @@ export function isFixedEditableDocumentId(documentId: EditableDocumentId): docum
 }
 
 export const SKILL_ID_PREFIX = "skill:";
+export const MANAGED_SKILL_SCOPE = "managed";
+export const WORKSPACE_SKILL_SCOPE = "workspace";
 export const SKILL_NAME_PATTERN = /^(?!\.{1,2}$)[A-Za-z0-9._-]+$/;
