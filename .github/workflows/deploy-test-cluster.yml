@@ -100,7 +100,7 @@ jobs:
               "sudo -iu ec2-user bash -lc 'cd /home/ec2-user/Agent_Cluster_deploy_src && git pull --ff-only && rsync -a --delete /home/ec2-user/Agent_Cluster_deploy_src/deploy/agent_2_dashboard_adapter/ /home/ec2-user/agent_2_dashboard_adapter/'",
               "sudo systemctl restart agent2-dashboard-adapter",
               "sudo systemctl status agent2-dashboard-adapter --no-pager",
-              "sudo bash -lc 'set -a; source /etc/gate-dashboard/agent2-dashboard-adapter.env; set +a; curl --fail --silent --show-error http://127.0.0.1:9011/health -H \"X-Dashboard-Secret: ${DASHBOARD_ADAPTER_SECRET}\"'"
+              "sudo bash -lc 'set -euo pipefail; set -a; source /etc/gate-dashboard/agent2-dashboard-adapter.env; set +a; for attempt in {1..12}; do if curl --fail --silent --show-error http://127.0.0.1:9011/health -H \"X-Dashboard-Secret: ${DASHBOARD_ADAPTER_SECRET}\" > /tmp/agent2-dashboard-health.json; then cat /tmp/agent2-dashboard-health.json; exit 0; fi; sleep 5; done; exit 1'"
           ]
 
           print(json.dumps({"commands": commands}))
@@ -184,8 +184,7 @@ jobs:
               "sudo -iu ec2-user bash -lc 'cd /home/ec2-user/Agent_Cluster_v2 && git pull --ff-only && source /home/ec2-user/.nvm/nvm.sh && pnpm install && pnpm build'",
               "sudo systemctl restart gate-dashboard",
               "sudo systemctl status gate-dashboard --no-pager",
-              "curl --fail --silent --show-error http://127.0.0.1:3000/api/nodes",
-              "curl --fail --silent --show-error http://127.0.0.1:3000/api/files"
+              "bash -lc 'set -euo pipefail; for attempt in {1..12}; do if curl --fail --silent --show-error http://127.0.0.1:3000/api/nodes > /tmp/gate-dashboard-nodes.json && curl --fail --silent --show-error http://127.0.0.1:3000/api/files > /tmp/gate-dashboard-files.json; then cat /tmp/gate-dashboard-nodes.json; echo; cat /tmp/gate-dashboard-files.json; exit 0; fi; sleep 5; done; exit 1'"
           ]
 
           print(json.dumps({"commands": commands}))
