@@ -99,6 +99,8 @@ describe("OverviewScreen", () => {
       root.render(<OverviewScreen />);
     });
 
+    expect(container.querySelector('[data-ui="overview-workbench"]')).toBeTruthy();
+    expect(container.querySelector('[data-ui="overview-toolbar"]')).toBeTruthy();
     expect(container.textContent).toContain("Loading cluster state...");
 
     await act(async () => {
@@ -214,6 +216,8 @@ describe("OverviewScreen", () => {
     });
 
     await vi.waitFor(() => {
+      expect(container.querySelector('[data-ui="overview-workbench"]')).toBeTruthy();
+      expect(container.querySelector('[data-ui="overview-toolbar"]')).toBeTruthy();
       expect(container.querySelector('[data-ui="overview-hero"]')).toBeTruthy();
       expect(container.querySelector('[data-ui="overview-nodes"]')).toBeTruthy();
       expect(container.querySelector('[data-ui="overview-agents"]')).toBeTruthy();
@@ -262,6 +266,7 @@ describe("OverviewScreen", () => {
     });
 
     await vi.waitFor(() => {
+      expect(container.querySelector('[data-ui="overview-workbench"]')).toBeTruthy();
       expect(container.textContent).toContain(
         "Unable to load overview data: Health endpoint unavailable"
       );

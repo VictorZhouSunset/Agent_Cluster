@@ -26,13 +26,15 @@ export function AppShell({
     <main className="app-shell" data-ui="app-shell">
       <aside className="app-sidebar" aria-label="Primary" data-ui="app-sidebar">
         <div className="app-brand">
-          <p className="app-brand__eyebrow">Gate Cluster</p>
-          <h1 className="app-brand__title">Operations Dashboard</h1>
-          <p className="app-brand__description">
-            Internal visibility into node health, sessions, skills, and allowlisted workspace files.
-          </p>
+          <div className="app-brand__mark" aria-hidden="true">
+            <span className="app-brand__pulse" />
+          </div>
+          <div className="app-brand__copy">
+            <p className="app-brand__eyebrow">Cluster Ops</p>
+            <h1 className="app-brand__title">Gate Workbench</h1>
+          </div>
         </div>
-        <nav className="app-nav" aria-label="Dashboard sections">
+        <nav className="app-nav" aria-label="Dashboard sections" data-ui="app-nav-rail">
           {navigationSections.map((section) => {
             const isActive = section.id === selectedSection;
 
@@ -45,7 +47,9 @@ export function AppShell({
                 onClick={() => onSectionSelect(section.id)}
               >
                 <span className="app-nav__label">{section.label}</span>
-                <span className="app-nav__description">{section.description}</span>
+                {isActive ? (
+                  <span className="app-nav__description">{section.description}</span>
+                ) : null}
               </button>
             );
           })}
@@ -54,10 +58,12 @@ export function AppShell({
 
       <section className="app-main">
         <div className="section-frame" data-ui="section-frame">
-          <header className="section-header">
-            <p className="section-header__eyebrow">Dashboard Section</p>
-            <h2 className="section-header__title">{activeSection.label}</h2>
-            <p className="section-header__description">{activeSection.description}</p>
+          <header className="app-toolbar" data-ui="app-toolbar">
+            <div className="app-toolbar__copy">
+              <p className="section-header__eyebrow">Workspace</p>
+              <h2 className="section-header__title">{activeSection.label}</h2>
+            </div>
+            <p className="app-toolbar__context">{activeSection.description}</p>
           </header>
           {children}
         </div>

@@ -145,6 +145,8 @@ describe("FilesScreen", () => {
     });
 
     await vi.waitFor(() => {
+      expect(container.querySelector('[data-ui="documents-workbench"]')).toBeTruthy();
+      expect(container.querySelector('[data-ui="documents-toolbar"]')).toBeTruthy();
       expect(container.querySelector('[data-ui="documents-list"]')).toBeTruthy();
       expect(container.querySelector('[data-ui="documents-detail"]')).toBeTruthy();
       expect(container.textContent).toContain("AGENTS.md");
@@ -273,6 +275,7 @@ describe("FilesScreen", () => {
     });
 
     await vi.waitFor(() => {
+      expect(container.querySelector('[data-ui="documents-workbench"]')).toBeTruthy();
       expect(container.querySelector('[data-ui="document-header"]')).toBeTruthy();
       expect(container.querySelector("h1")?.textContent).toBe("Agents");
     });
@@ -428,6 +431,7 @@ describe("FilesScreen", () => {
     });
 
     await vi.waitFor(() => {
+      expect(container.querySelector('[data-ui="documents-toolbar"]')).toBeTruthy();
       expect((container.querySelector("select") as HTMLSelectElement)?.value).toBe(
         "openmoose03-cio"
       );

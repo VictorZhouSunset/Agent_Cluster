@@ -78,21 +78,56 @@ export function OverviewScreen() {
   }, []);
 
   if (state.status === "loading") {
-    return <p className="loading-copy">Loading cluster state...</p>;
+    return (
+      <div className="overview-workbench stack-grid" data-ui="overview-workbench">
+        <section className="workbench-toolbar panel panel--soft" data-ui="overview-toolbar">
+          <div className="panel__body workbench-toolbar__body">
+            <div className="workbench-toolbar__copy">
+              <span className="workbench-toolbar__label">Cluster</span>
+              <span className="workbench-toolbar__value">Loading cluster state</span>
+            </div>
+          </div>
+        </section>
+        <p className="loading-copy">Loading cluster state...</p>
+      </div>
+    );
   }
 
   if (state.status === "error") {
     return (
-      <p className="error-copy" role="alert">
-        Unable to load overview data: {state.message}
-      </p>
+      <div className="overview-workbench stack-grid" data-ui="overview-workbench">
+        <section className="workbench-toolbar panel panel--soft" data-ui="overview-toolbar">
+          <div className="panel__body workbench-toolbar__body">
+            <div className="workbench-toolbar__copy">
+              <span className="workbench-toolbar__label">Cluster</span>
+              <span className="workbench-toolbar__value">Overview unavailable</span>
+            </div>
+          </div>
+        </section>
+        <p className="error-copy" role="alert">
+          Unable to load overview data: {state.message}
+        </p>
+      </div>
     );
   }
 
   const healthyNodeCount = state.nodes.filter((node) => node.status === "healthy").length;
 
   return (
-    <div className="stack-grid">
+    <div className="overview-workbench stack-grid" data-ui="overview-workbench">
+      <section className="workbench-toolbar panel panel--soft" data-ui="overview-toolbar">
+        <div className="panel__body workbench-toolbar__body">
+          <div className="workbench-toolbar__copy">
+            <span className="workbench-toolbar__label">Cluster</span>
+            <span className="workbench-toolbar__value">
+              {state.health.summary ?? "No cluster summary provided."}
+            </span>
+          </div>
+          <div className="workbench-toolbar__actions">
+            <span className={getStatusTone(state.health.status)}>{state.health.status}</span>
+          </div>
+        </div>
+      </section>
       <section className="panel metric-card" data-ui="overview-hero">
         <div className="panel__body">
           <div className="metric-card__kicker">Cluster Health</div>

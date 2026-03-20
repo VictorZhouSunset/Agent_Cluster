@@ -114,32 +114,47 @@ export function NodeScopedDocumentsScreen({
   const apiNodeId = toApiNodeId(selectedNode);
 
   return (
-    <div className="documents-toolbar">
-      <section className="panel panel--soft">
-        <div className="panel__body documents-toolbar">
-        <label htmlFor={`${kind}-node-select`}>
-          <strong className="panel__title">Node</strong>
-        </label>
-        <select
-          className="node-select"
-          id={`${kind}-node-select`}
-          value={selectedNodeId ?? ""}
-          disabled={nodesState.status !== "success" || availableNodes.length < 2}
-          onChange={(event) => setSelectedNodeId(event.target.value)}
-        >
-          {availableNodes.map((node) => (
-            <option key={node.id} value={node.id}>
-              {node.name}
-            </option>
-          ))}
-        </select>
-        {nodesState.status === "loading" ? <p className="loading-copy">Loading nodes...</p> : null}
-        {nodesState.status === "error" ? (
-          <p className="error-copy" role="alert">Unable to load nodes: {nodesState.message}</p>
-        ) : null}
+    <div className="documents-workbench" data-ui="documents-workbench">
+      <section className="workbench-toolbar panel panel--soft" data-ui="documents-toolbar">
+        <div className="panel__body workbench-toolbar__body">
+          <div className="workbench-toolbar__copy">
+            <span className="workbench-toolbar__label">Node</span>
+            <span className="workbench-toolbar__value">
+              {selectedNode?.name ?? "Loading nodes"}
+            </span>
+          </div>
+          <div className="workbench-toolbar__actions">
+            <label className="sr-only" htmlFor={`${kind}-node-select`}>
+              Node
+            </label>
+            <select
+              className="node-select"
+              id={`${kind}-node-select`}
+              value={selectedNodeId ?? ""}
+              disabled={nodesState.status !== "success" || availableNodes.length < 2}
+              onChange={(event) => setSelectedNodeId(event.target.value)}
+            >
+              {availableNodes.map((node) => (
+                <option key={node.id} value={node.id}>
+                  {node.name}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
+        {nodesState.status === "loading" ? (
+          <div className="panel__body" style={{ paddingTop: 0 }}>
+            <p className="loading-copy">Loading nodes...</p>
+          </div>
+        ) : null}
+        {nodesState.status === "error" ? (
+          <div className="panel__body" style={{ paddingTop: 0 }}>
+            <p className="error-copy" role="alert">
+              Unable to load nodes: {nodesState.message}
+            </p>
+          </div>
+        ) : null}
       </section>
-
       <EditableDocumentsScreen
         key={selectedNode?.id ?? "local"}
         collectionTitle={collectionTitle}

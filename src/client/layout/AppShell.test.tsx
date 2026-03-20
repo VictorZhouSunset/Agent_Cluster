@@ -9,6 +9,8 @@ describe("App shell", () => {
 
     expect(html).toContain('data-ui="app-shell"');
     expect(html).toContain('data-ui="app-sidebar"');
+    expect(html).toContain('data-ui="app-nav-rail"');
+    expect(html).toContain('data-ui="app-toolbar"');
     expect(html).toContain('data-ui="section-frame"');
     expect(html).toContain(">Overview<");
     expect(html).toContain('aria-current="page"');
@@ -20,6 +22,7 @@ describe("App shell", () => {
     );
 
     expect(html).toContain('data-ui="section-frame"');
+    expect(html).toContain('data-ui="app-toolbar"');
     expect(html).toContain(">Sessions<");
     expect(html).toContain('aria-current="page"');
   });

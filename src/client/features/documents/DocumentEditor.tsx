@@ -41,7 +41,7 @@ export function DocumentEditor({
   }, [isSaving]);
 
   return (
-    <article className="panel detail-shell">
+    <article className="panel detail-shell document-workbench">
       <div className="detail-header" data-ui="document-header">
         <div className="detail-header__copy">
           <h2 className="detail-title">{title.replace(/\.md$/i, "")}</h2>
@@ -90,7 +90,7 @@ export function DocumentEditor({
         </div>
       </div>
 
-      <div className="detail-body" style={{ display: "grid", gap: "16px" }}>
+      <div className="detail-body document-workbench__body">
         {isEditing && canEdit ? (
           <textarea
             className="document-editor-textarea"

@@ -277,15 +277,27 @@ export function EditableDocumentsScreen({
 
       <section className="split-panel" data-ui="documents-detail">
         {detailState.status === "idle" ? (
-          <p className="empty-copy">{idleDetailMessage}</p>
+          <section className="panel detail-shell">
+            <div className="detail-body">
+              <p className="empty-copy">{idleDetailMessage}</p>
+            </div>
+          </section>
         ) : null}
         {detailState.status === "loading" ? (
-          <p className="loading-copy">{loadingDetailMessage}</p>
+          <section className="panel detail-shell">
+            <div className="detail-body">
+              <p className="loading-copy">{loadingDetailMessage}</p>
+            </div>
+          </section>
         ) : null}
         {detailState.status === "error" ? (
-          <p className="error-copy" role="alert">
-            {loadDetailErrorPrefix}: {detailState.message}
-          </p>
+          <section className="panel detail-shell">
+            <div className="detail-body">
+              <p className="error-copy" role="alert">
+                {loadDetailErrorPrefix}: {detailState.message}
+              </p>
+            </div>
+          </section>
         ) : null}
         {detailState.status === "success" ? (
           <DocumentEditor

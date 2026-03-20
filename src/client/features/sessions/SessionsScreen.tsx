@@ -136,8 +136,25 @@ export function SessionsScreen() {
     sessionsState.status === "success" ? sessionsState.sessions : [];
 
   return (
-    <div className="split-layout">
-      <section className="panel split-panel" data-ui="sessions-list">
+    <div className="sessions-workbench" data-ui="sessions-workbench">
+      <section className="workbench-toolbar panel panel--soft" data-ui="sessions-toolbar">
+        <div className="panel__body workbench-toolbar__body">
+          <div className="workbench-toolbar__copy">
+            <span className="workbench-toolbar__label">Session Workspace</span>
+            <span className="workbench-toolbar__value">
+              {sessions.length > 0 ? `${sessions.length} sessions loaded` : "No sessions loaded"}
+            </span>
+          </div>
+          <div className="workbench-toolbar__actions">
+            <span className="workbench-toolbar__meta">
+              Chat history from the current backend
+            </span>
+          </div>
+        </div>
+      </section>
+
+      <div className="split-layout">
+        <section className="panel split-panel" data-ui="sessions-list">
         <div className="panel__header">
           <div>
             <h3 className="panel__title">Sessions</h3>
@@ -193,9 +210,9 @@ export function SessionsScreen() {
             )
           ) : null}
         </div>
-      </section>
+        </section>
 
-      <section className="panel split-panel detail-shell" data-ui="session-detail">
+        <section className="panel split-panel detail-shell" data-ui="session-detail">
         {detailState.status === "idle" ? (
           <div className="detail-body">
             <p className="empty-copy">Select a session to view its detail.</p>
@@ -248,7 +265,8 @@ export function SessionsScreen() {
             </div>
           </>
         ) : null}
-      </section>
+        </section>
+      </div>
     </div>
   );
 }

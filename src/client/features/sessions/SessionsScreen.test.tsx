@@ -73,6 +73,8 @@ describe("SessionsScreen", () => {
     });
 
     expect(container.textContent).toContain("Sessions");
+    expect(container.querySelector('[data-ui="sessions-workbench"]')).toBeTruthy();
+    expect(container.querySelector('[data-ui="sessions-toolbar"]')).toBeTruthy();
     expect(container.querySelector('[data-ui="sessions-list"]')).toBeTruthy();
     expect(container.querySelector('[data-ui="session-detail"]')).toBeTruthy();
     expect(container.textContent).toContain("Loading sessions...");
@@ -149,6 +151,7 @@ describe("SessionsScreen", () => {
     });
 
     await vi.waitFor(() => {
+      expect(container.querySelector('[data-ui="sessions-workbench"]')).toBeTruthy();
       expect(container.querySelector('[data-ui="session-detail"]')).toBeTruthy();
       expect(container.textContent).toContain("Morning Run");
       expect(container.textContent).toContain("Evening Review");
@@ -235,6 +238,7 @@ describe("SessionsScreen", () => {
     });
 
     await vi.waitFor(() => {
+      expect(container.querySelector('[data-ui="sessions-toolbar"]')).toBeTruthy();
       expect(container.textContent).toContain("Ready to help");
     });
 
@@ -283,6 +287,7 @@ describe("SessionsScreen", () => {
     });
 
     await vi.waitFor(() => {
+      expect(container.querySelector('[data-ui="sessions-workbench"]')).toBeTruthy();
       expect(container.textContent).toContain(
         "Unable to load sessions: Session list unavailable"
       );
@@ -323,6 +328,7 @@ describe("SessionsScreen", () => {
     });
 
     await vi.waitFor(() => {
+      expect(container.querySelector('[data-ui="sessions-workbench"]')).toBeTruthy();
       expect(container.textContent).toContain(
         "Unable to load session detail: Session detail unavailable"
       );
