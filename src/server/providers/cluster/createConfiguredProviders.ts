@@ -14,6 +14,7 @@ export interface ClusterEnvironment {
   GATE_CLUSTER_ADAPTER_BASE_URL?: string;
   GATE_CLUSTER_ADAPTER_SECRET?: string;
   GATE_OPENCLAW_BASE_DIR?: string;
+  GATE_OPENCLAW_AGENT_ID?: string;
   HOME?: string;
 }
 
@@ -38,10 +39,12 @@ export function createConfiguredProviders(
   env: ClusterEnvironment = process.env
 ): ConfiguredProviders {
   const remoteAdapterClient = createRemoteAdapterClient(env);
-  const localFilesystemProvider = createLocalFilesystemProvider(
-    env.GATE_OPENCLAW_BASE_DIR ?? env.HOME ?? rootDir
-  );
-  const localOpenClawProvider = createLocalOpenClawProvider();
+  const openClawHomeDir = env.GATE_OPENCLAW_BASE_DIR ?? env.HOME ?? rootDir;
+  const localFilesystemProvider = createLocalFilesystemProvider(openClawHomeDir);
+  const localOpenClawProvider = createLocalOpenClawProvider({
+    homeDir: openClawHomeDir,
+    agentId: env.GATE_OPENCLAW_AGENT_ID
+  });
 
   return {
     filesystemProvider: createClusterFilesystemProvider({

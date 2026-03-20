@@ -2,6 +2,9 @@
 // output: assertions for normalized local health, node, agent, and session reads with current cluster naming
 // pos: provider tests for the local OpenClaw runtime wrapper
 // 一旦我被更新，务必更新我的开头注释以及所属文件夹的md。
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 import type { LocalOpenClawAdapter } from "./types";
 import type { SessionDetail } from "../../../shared/types";
 import { describe, expect, it } from "vitest";
@@ -204,5 +207,120 @@ describe("local OpenClaw provider", () => {
     await expect(provider.getSession("session-custom")).resolves.toEqual(
       adapterState.sessionDetails["session-custom"]
     );
+  });
+
+  it("reads real sessions from the local OpenClaw session store", async () => {
+    const homeDir = await mkdtemp(join(tmpdir(), "gate-dashboard-openclaw-"));
+    const sessionId = "916b22ea-e1ff-42c3-8c53-e77b8c60e2e3";
+    const sessionsDir = join(homeDir, ".openclaw", "agents", "main", "sessions");
+
+    try {
+      await mkdir(sessionsDir, { recursive: true });
+      await writeFile(
+        join(sessionsDir, "sessions.json"),
+        JSON.stringify(
+          {
+            main: {
+              sessionId,
+              displayName: "Morning standup",
+              updatedAt: "2026-03-19T18:01:42.000Z",
+              createdAt: "2026-03-19T17:50:00.000Z",
+              status: "active"
+            }
+          },
+          null,
+          2
+        ),
+        "utf8"
+      );
+      await writeFile(
+        join(sessionsDir, `${sessionId}.jsonl`),
+        [
+          JSON.stringify({
+            type: "message",
+            id: "message-system",
+            role: "system",
+            content: "You are OpenClaw.",
+            createdAt: "2026-03-19T17:50:00.000Z"
+          }),
+          JSON.stringify({
+            type: "message",
+            id: "message-user",
+            message: {
+              role: "user",
+              content: [{ type: "text", text: "Show me the cluster status." }]
+            },
+            timestamp: "2026-03-19T17:55:00.000Z"
+          }),
+          JSON.stringify({
+            type: "message",
+            id: "message-assistant",
+            message: {
+              role: "assistant",
+              content: [
+                { type: "text", text: "Cluster looks healthy." },
+                { type: "tool_result", text: "Ignored tool blob." }
+              ]
+            },
+            createdAt: "2026-03-19T18:01:42.000Z"
+          }),
+          JSON.stringify({
+            type: "event",
+            event: "heartbeat",
+            createdAt: "2026-03-19T18:01:45.000Z"
+          })
+        ].join("\n"),
+        "utf8"
+      );
+
+      const provider = createLocalOpenClawProvider({ homeDir });
+
+      await expect(provider.listSessions()).resolves.toEqual([
+        {
+          id: sessionId,
+          title: "Morning standup",
+          updatedAt: "2026-03-19T18:01:42.000Z",
+          startedAt: "2026-03-19T17:50:00.000Z",
+          status: "active",
+          agentId: "main",
+          agentName: "OpenMoose03_CIO Agent",
+          nodeId: "openmoose03-cio",
+          nodeName: "OpenMoose03_CIO"
+        }
+      ]);
+      await expect(provider.getSession(sessionId)).resolves.toEqual({
+        id: sessionId,
+        title: "Morning standup",
+        updatedAt: "2026-03-19T18:01:42.000Z",
+        startedAt: "2026-03-19T17:50:00.000Z",
+        status: "active",
+        agentId: "main",
+        agentName: "OpenMoose03_CIO Agent",
+        nodeId: "openmoose03-cio",
+        nodeName: "OpenMoose03_CIO",
+        messages: [
+          {
+            id: "message-system",
+            role: "system",
+            content: "You are OpenClaw.",
+            createdAt: "2026-03-19T17:50:00.000Z"
+          },
+          {
+            id: "message-user",
+            role: "user",
+            content: "Show me the cluster status.",
+            createdAt: "2026-03-19T17:55:00.000Z"
+          },
+          {
+            id: "message-assistant",
+            role: "assistant",
+            content: "Cluster looks healthy.\n\nIgnored tool blob.",
+            createdAt: "2026-03-19T18:01:42.000Z"
+          }
+        ]
+      });
+    } finally {
+      await rm(homeDir, { recursive: true, force: true });
+    }
   });
 });

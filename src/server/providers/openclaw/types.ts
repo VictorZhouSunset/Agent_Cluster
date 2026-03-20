@@ -1,4 +1,4 @@
-// input: local OpenClaw runtime data and optional adapter implementations
+// input: local OpenClaw runtime data, optional adapter implementations, and local session-store settings
 // output: provider and adapter contracts for normalized dashboard state and node reads
 // pos: OpenClaw provider interface boundary for the backend
 // 一旦我被更新，务必更新我的开头注释以及所属文件夹的md。
@@ -28,4 +28,6 @@ export interface LocalOpenClawAdapter {
 
 export interface CreateLocalOpenClawProviderOptions {
   adapter?: LocalOpenClawAdapter;
+  homeDir?: string;
+  agentId?: string;
 }

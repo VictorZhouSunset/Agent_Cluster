@@ -1,4 +1,4 @@
-// input: local OpenClaw-facing adapter hooks and fallback stub data
+// input: local OpenClaw-facing adapter hooks, local session-store settings, and fallback stub data
 // output: normalized dashboard health, node, agent, and session data for backend routes using current cluster naming
 // pos: local OpenClaw provider implementation used by the dashboard backend
 // 一旦我被更新，务必更新我的开头注释以及所属文件夹的md。
@@ -15,6 +15,7 @@ import type {
   LocalOpenClawAdapter,
   OpenClawProvider
 } from "./types.js";
+import { createFilesystemSessionAdapter } from "./localSessionStore.js";
 
 const stubHealth: DashboardHealth = {
   status: "healthy",
@@ -81,7 +82,7 @@ const stubSessionDetails: Record<string, SessionDetail> = {
 export function createLocalOpenClawProvider(
   options: CreateLocalOpenClawProviderOptions = {}
 ): OpenClawProvider {
-  const adapter = options.adapter ?? createStubAdapter();
+  const adapter = options.adapter ?? createDefaultAdapter(options);
 
   return {
     async getHealth(): Promise<DashboardHealth> {
@@ -106,7 +107,16 @@ export function createLocalOpenClawProvider(
   };
 }
 
-function createStubAdapter(): LocalOpenClawAdapter {
+function createDefaultAdapter(
+  options: CreateLocalOpenClawProviderOptions
+): LocalOpenClawAdapter {
+  const sessionAdapter = options.homeDir
+    ? createFilesystemSessionAdapter({
+        homeDir: options.homeDir,
+        agentId: options.agentId
+      })
+    : null;
+
   return {
     async readHealth() {
       return cloneHealth(stubHealth);
@@ -118,9 +128,17 @@ function createStubAdapter(): LocalOpenClawAdapter {
       return stubAgents.map(cloneAgent);
     },
     async listSessions() {
+      if (sessionAdapter) {
+        return sessionAdapter.listSessions();
+      }
+
       return stubSessionSummaries.map(cloneSessionSummary);
     },
     async getSession(sessionId: string) {
+      if (sessionAdapter) {
+        return sessionAdapter.getSession(sessionId);
+      }
+
       const session = stubSessionDetails[sessionId];
       return session ? cloneSessionDetail(session) : null;
     }
