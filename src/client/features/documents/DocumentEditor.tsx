@@ -1,5 +1,5 @@
 // input: current markdown content plus save/error state from a parent document workspace
-// output: rendered markdown preview with edit, cancel, and save controls contained within the editor card
+// output: Gemini-inspired preview-first Markdown editor with contained controls for files and skills
 // pos: reusable dashboard document editor shared by files and skills screens
 // 一旦我被更新，务必更新我的开头注释以及所属文件夹的md。
 import { useEffect, useState } from "react";
@@ -25,7 +25,6 @@ export function DocumentEditor({
   const [draftContent, setDraftContent] = useState(content);
   const [isEditing, setIsEditing] = useState(isSaving);
   const visibleStatusMessage =
-    // Hide the old success state as soon as the local draft diverges again.
     draftContent === content ? statusMessage : undefined;
 
   useEffect(() => {
@@ -40,127 +39,80 @@ export function DocumentEditor({
   }, [isSaving]);
 
   return (
-    <article
-      style={{
-        border: "1px solid #cbd5e1",
-        borderRadius: "0.75rem",
-        padding: "1rem",
-        backgroundColor: "#ffffff",
-        display: "grid",
-        gap: "0.75rem",
-        width: "100%",
-        maxWidth: "100%",
-        minWidth: 0,
-        boxSizing: "border-box"
-      }}
-    >
-      <div>
-        <h4 style={{ marginTop: 0, marginBottom: "0.35rem" }}>{title}</h4>
-        <p style={{ margin: 0, color: "#475569" }}>
+    <article className="panel detail-shell">
+      <div className="detail-header" data-ui="document-header">
+        <div>
+          <h2 className="detail-title">{title.replace(/\.md$/i, "")}</h2>
+          <p className="panel__subtitle">{title}</p>
+        </div>
+        <p className="panel__subtitle" style={{ margin: 0 }}>
           Preview the rendered markdown, then switch into edit mode when you need to update it.
         </p>
       </div>
 
-      {isEditing ? (
-        <textarea
-          value={draftContent}
-          disabled={isSaving}
-          onChange={(event) => setDraftContent(event.target.value)}
-          rows={18}
-          style={{
-            display: "block",
-            width: "100%",
-            maxWidth: "100%",
-            minWidth: 0,
-            minHeight: "20rem",
-            padding: "0.9rem",
-            borderRadius: "0.75rem",
-            border: "1px solid #cbd5e1",
-            fontFamily: "monospace",
-            fontSize: "0.95rem",
-            resize: "vertical",
-            boxSizing: "border-box"
-          }}
-        />
-      ) : (
-        <div
-          style={{
-            width: "100%",
-            maxWidth: "100%",
-            minWidth: 0,
-            minHeight: "20rem",
-            padding: "0.9rem",
-            borderRadius: "0.75rem",
-            border: "1px solid #cbd5e1",
-            backgroundColor: "#f8fafc",
-            boxSizing: "border-box",
-            overflowX: "auto"
-          }}
-        >
-          <ReactMarkdown>{content}</ReactMarkdown>
-        </div>
-      )}
-
-      <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
+      <div className="detail-body" style={{ display: "grid", gap: "16px" }}>
         {isEditing ? (
-          <>
-            <button
-              type="button"
-              disabled={isSaving}
-              onClick={() => void onSave(draftContent)}
-              style={{
-                border: "1px solid #0f172a",
-                borderRadius: "0.75rem",
-                padding: "0.75rem 1rem",
-                backgroundColor: isSaving ? "#cbd5e1" : "#0f172a",
-                color: "#ffffff",
-                cursor: isSaving ? "wait" : "pointer"
-              }}
-            >
-              {isSaving ? "Saving..." : "Save"}
-            </button>
-            <button
-              type="button"
-              disabled={isSaving}
-              onClick={() => {
-                setDraftContent(content);
-                setIsEditing(false);
-              }}
-              style={{
-                border: "1px solid #cbd5e1",
-                borderRadius: "0.75rem",
-                padding: "0.75rem 1rem",
-                backgroundColor: "#ffffff",
-                color: "#0f172a",
-                cursor: isSaving ? "wait" : "pointer"
-              }}
-            >
-              Cancel
-            </button>
-          </>
-        ) : (
-          <button
-            type="button"
+          <textarea
+            className="document-editor-textarea"
+            data-ui="document-editor"
+            value={draftContent}
             disabled={isSaving}
-            onClick={() => setIsEditing(true)}
+            onChange={(event) => setDraftContent(event.target.value)}
+            rows={18}
             style={{
-              border: "1px solid #0f172a",
-              borderRadius: "0.75rem",
-              padding: "0.75rem 1rem",
-              backgroundColor: "#0f172a",
-              color: "#ffffff",
-              cursor: isSaving ? "wait" : "pointer"
+              display: "block",
+              width: "100%",
+              maxWidth: "100%",
+              minWidth: 0,
+              boxSizing: "border-box"
             }}
-          >
-            Edit
-          </button>
+          />
+        ) : (
+          <div className="document-preview markdown-surface" data-ui="document-preview">
+            <ReactMarkdown>{content}</ReactMarkdown>
+          </div>
         )}
-        {visibleStatusMessage ? (
-          <p style={{ margin: 0, color: "#166534" }}>{visibleStatusMessage}</p>
-        ) : null}
-      </div>
 
-      {errorMessage ? <p role="alert" style={{ margin: 0 }}>{errorMessage}</p> : null}
+        <div className="toolbar-row">
+          {isEditing ? (
+            <>
+              <button
+                className="button-primary"
+                type="button"
+                disabled={isSaving}
+                onClick={() => void onSave(draftContent)}
+              >
+                {isSaving ? "Saving..." : "Save"}
+              </button>
+              <button
+                className="button-secondary"
+                type="button"
+                disabled={isSaving}
+                onClick={() => {
+                  setDraftContent(content);
+                  setIsEditing(false);
+                }}
+              >
+                Cancel
+              </button>
+            </>
+          ) : (
+            <button
+              className="button-secondary"
+              type="button"
+              disabled={isSaving}
+              onClick={() => setIsEditing(true)}
+            >
+              Edit
+            </button>
+          )}
+          {visibleStatusMessage ? (
+            <p className="success-copy">{visibleStatusMessage}</p>
+          ) : null}
+        </div>
+
+        {errorMessage ? <p className="error-copy" role="alert">{errorMessage}</p> : null}
+      </div>
     </article>
   );
 }

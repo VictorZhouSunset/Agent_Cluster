@@ -1,6 +1,6 @@
 // input: cluster node inventory plus node-aware document API callbacks for one document kind
-// output: reusable node selector wrapped around the shared editable-documents workspace
-// pos: client-side bridge that scopes files and skills screens to local or remote nodes
+// output: styled node selector wrapper around the shared editable-documents workspace
+// pos: client-side bridge that scopes file and skill editing to local or remote nodes
 // 一旦我被更新，务必更新我的开头注释以及所属文件夹的md。
 import { useEffect, useMemo, useState } from "react";
 import type {
@@ -112,29 +112,18 @@ export function NodeScopedDocumentsScreen({
   const apiNodeId = toApiNodeId(selectedNode);
 
   return (
-    <div style={{ display: "grid", gap: "1rem" }}>
-      <section
-        style={{
-          marginTop: "2rem",
-          display: "grid",
-          gap: "0.5rem"
-        }}
-      >
+    <div className="documents-toolbar">
+      <section className="panel panel--soft">
+        <div className="panel__body documents-toolbar">
         <label htmlFor={`${kind}-node-select`}>
-          <strong>Node</strong>
+          <strong className="panel__title">Node</strong>
         </label>
         <select
+          className="node-select"
           id={`${kind}-node-select`}
           value={selectedNodeId ?? ""}
           disabled={nodesState.status !== "success" || availableNodes.length < 2}
           onChange={(event) => setSelectedNodeId(event.target.value)}
-          style={{
-            maxWidth: "22rem",
-            borderRadius: "0.75rem",
-            border: "1px solid #cbd5e1",
-            padding: "0.65rem 0.8rem",
-            backgroundColor: "#ffffff"
-          }}
         >
           {availableNodes.map((node) => (
             <option key={node.id} value={node.id}>
@@ -142,10 +131,11 @@ export function NodeScopedDocumentsScreen({
             </option>
           ))}
         </select>
-        {nodesState.status === "loading" ? <p>Loading nodes...</p> : null}
+        {nodesState.status === "loading" ? <p className="loading-copy">Loading nodes...</p> : null}
         {nodesState.status === "error" ? (
-          <p role="alert">Unable to load nodes: {nodesState.message}</p>
+          <p className="error-copy" role="alert">Unable to load nodes: {nodesState.message}</p>
         ) : null}
+        </div>
       </section>
 
       <EditableDocumentsScreen

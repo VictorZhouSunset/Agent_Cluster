@@ -1,10 +1,20 @@
 // input: session list/detail responses from the dashboard API client
-// output: master-detail session browser with loading, error, and content states
+// output: Gemini-inspired master-detail session browser with Markdown-rich conversation rendering
 // pos: sessions feature screen for the client dashboard
 // 一旦我被更新，务必更新我的开头注释以及所属文件夹的md。
 import { useEffect, useState } from "react";
-import type { SessionDetail, SessionSummary } from "../../../shared/types";
+import ReactMarkdown from "react-markdown";
+import type {
+  SessionDetail,
+  SessionMessage,
+  SessionSummary
+} from "../../../shared/types";
 import { apiClient } from "../../lib/apiClient";
+import {
+  formatLongDateTime,
+  formatShortDateTime,
+  formatShortTime
+} from "../../lib/formatters";
 
 type SessionsState =
   | { status: "loading" }
@@ -16,6 +26,22 @@ type SessionDetailState =
   | { status: "loading" }
   | { status: "error"; message: string }
   | { status: "success"; detail: SessionDetail };
+
+function getStatusTone(status?: string) {
+  if (status === "completed" || status === "idle") {
+    return "status-badge status-badge--healthy";
+  }
+
+  if (status === "active" || status === "running") {
+    return "status-badge status-badge--degraded";
+  }
+
+  if (status === "error") {
+    return "status-badge status-badge--error";
+  }
+
+  return "status-badge status-badge--neutral";
+}
 
 export function SessionsScreen() {
   const [sessionsState, setSessionsState] = useState<SessionsState>({
@@ -110,93 +136,137 @@ export function SessionsScreen() {
     sessionsState.status === "success" ? sessionsState.sessions : [];
 
   return (
-    <div
-      style={{
-        marginTop: "2rem",
-        display: "grid",
-        gridTemplateColumns: "minmax(220px, 320px) 1fr",
-        gap: "1.5rem"
-      }}
-    >
-      <section>
-        <h3>Sessions</h3>
-        {sessionsState.status === "loading" ? <p>Loading sessions...</p> : null}
-        {sessionsState.status === "error" ? (
-          <p role="alert">Unable to load sessions: {sessionsState.message}</p>
-        ) : null}
-        {sessionsState.status === "success" ? (
-          sessions.length > 0 ? (
-            <div style={{ display: "grid", gap: "0.75rem" }}>
-              {sessions.map((session) => {
-                const isSelected = session.id === selectedSessionId;
+    <div className="split-layout">
+      <section className="panel split-panel" data-ui="sessions-list">
+        <div className="panel__header">
+          <div>
+            <h3 className="panel__title">Sessions</h3>
+            <p className="panel__subtitle">
+              Browse recent conversations and inspect message history from the current backend.
+            </p>
+          </div>
+        </div>
+        <div className="panel__body list-shell">
+          {sessionsState.status === "loading" ? (
+            <p className="loading-copy">Loading sessions...</p>
+          ) : null}
+          {sessionsState.status === "error" ? (
+            <p className="error-copy" role="alert">
+              Unable to load sessions: {sessionsState.message}
+            </p>
+          ) : null}
+          {sessionsState.status === "success" ? (
+            sessions.length > 0 ? (
+              <div className="list-scroll">
+                {sessions.map((session) => {
+                  const isSelected = session.id === selectedSessionId;
 
-                return (
-                  <button
-                    key={session.id}
-                    type="button"
-                    onClick={() => setSelectedSessionId(session.id)}
-                    aria-pressed={isSelected}
-                    style={{
-                      textAlign: "left",
-                      border: "1px solid #cbd5e1",
-                      borderRadius: "0.75rem",
-                      padding: "0.85rem 1rem",
-                      backgroundColor: isSelected ? "#e2e8f0" : "#ffffff",
-                      cursor: "pointer"
-                    }}
-                  >
-                    <strong>{session.title}</strong>
-                    <div>{session.status ?? "unknown"}</div>
-                  </button>
-                );
-              })}
-            </div>
-          ) : (
-            <p>No sessions found.</p>
-          )
-        ) : null}
+                  return (
+                    <button
+                      key={session.id}
+                      className="list-button"
+                      type="button"
+                      onClick={() => setSelectedSessionId(session.id)}
+                      aria-pressed={isSelected}
+                    >
+                      <span className="list-button__title">{session.title}</span>
+                      <div className="list-button__meta">
+                        <span>{session.agentName ?? session.agentId ?? "Unknown agent"}</span>
+                        <span>{formatShortTime(session.updatedAt)}</span>
+                      </div>
+                      <div className="badge-row" style={{ marginTop: "10px" }}>
+                        <span className={getStatusTone(session.status)}>
+                          {session.status ?? "unknown"}
+                        </span>
+                        {session.nodeName ? (
+                          <span className="status-badge status-badge--neutral">
+                            {session.nodeName}
+                          </span>
+                        ) : null}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="empty-copy">No sessions found.</p>
+            )
+          ) : null}
+        </div>
       </section>
 
-      <section>
-        <h3>Session Detail</h3>
+      <section className="panel split-panel detail-shell" data-ui="session-detail">
         {detailState.status === "idle" ? (
-          <p>Select a session to view its detail.</p>
+          <div className="detail-body">
+            <p className="empty-copy">Select a session to view its detail.</p>
+          </div>
         ) : null}
-        {detailState.status === "loading" ? <p>Loading session detail...</p> : null}
+        {detailState.status === "loading" ? (
+          <div className="detail-body">
+            <p className="loading-copy">Loading session detail...</p>
+          </div>
+        ) : null}
         {detailState.status === "error" ? (
-          <p role="alert">Unable to load session detail: {detailState.message}</p>
+          <div className="detail-body">
+            <p className="error-copy" role="alert">
+              Unable to load session detail: {detailState.message}
+            </p>
+          </div>
         ) : null}
         {detailState.status === "success" ? (
-          <article
-            style={{
-              border: "1px solid #cbd5e1",
-              borderRadius: "0.75rem",
-              padding: "1rem",
-              backgroundColor: "#ffffff"
-            }}
-          >
-            <h4 style={{ marginTop: 0 }}>{detailState.detail.title}</h4>
-            <p>
-              <strong>Status:</strong> {detailState.detail.status ?? "unknown"}
-            </p>
-            <div style={{ display: "grid", gap: "0.75rem" }}>
+          <>
+            <div className="detail-header">
+              <div className="badge-row">
+                <span className={getStatusTone(detailState.detail.status)}>
+                  {detailState.detail.status ?? "unknown"}
+                </span>
+                {detailState.detail.nodeName ? (
+                  <span className="status-badge status-badge--neutral">
+                    {detailState.detail.nodeName}
+                  </span>
+                ) : null}
+                {detailState.detail.agentName ? (
+                  <span className="status-badge status-badge--neutral">
+                    {detailState.detail.agentName}
+                  </span>
+                ) : null}
+              </div>
+              <h3 className="detail-title">{detailState.detail.title}</h3>
+              <div className="meta-line meta-line--mono">
+                <span>{detailState.detail.id}</span>
+                <span>Updated {formatLongDateTime(detailState.detail.updatedAt)}</span>
+                {detailState.detail.startedAt ? (
+                  <span>Started {formatShortDateTime(detailState.detail.startedAt)}</span>
+                ) : null}
+              </div>
+            </div>
+
+            <div className="detail-body session-messages">
               {detailState.detail.messages.map((message) => (
-                <div
-                  key={message.id}
-                  style={{
-                    border: "1px solid #e2e8f0",
-                    borderRadius: "0.5rem",
-                    padding: "0.75rem"
-                  }}
-                >
-                  <strong>{message.role}</strong>
-                  <p style={{ marginBottom: 0 }}>{message.content}</p>
-                </div>
+                <MessageBubble key={message.id} message={message} />
               ))}
             </div>
-          </article>
+          </>
         ) : null}
       </section>
+    </div>
+  );
+}
+
+function MessageBubble({ message }: { message: SessionMessage }) {
+  const roleClass = `session-message session-message--${message.role}`;
+
+  return (
+    <div className={roleClass} data-message-role={message.role}>
+      <div className="session-bubble">
+        <div className="session-bubble__meta">
+          <span>{message.role}</span>
+          <span>{formatLongDateTime(message.createdAt)}</span>
+        </div>
+        <div className="markdown-surface">
+          <ReactMarkdown>{message.content}</ReactMarkdown>
+        </div>
+      </div>
     </div>
   );
 }

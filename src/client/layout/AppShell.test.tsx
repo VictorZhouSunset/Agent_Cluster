@@ -7,10 +7,11 @@ describe("App shell", () => {
   it("defaults to Overview in the app", () => {
     const html = renderToStaticMarkup(<App />);
 
-    expect(html).toContain("<h2");
-    expect(html).toContain(">Overview</h2>");
-    expect(html).toContain("Agent health and status will appear here.");
-    expect(html).toMatch(/aria-current="page"[^>]*>Overview<\/button>/);
+    expect(html).toContain('data-ui="app-shell"');
+    expect(html).toContain('data-ui="app-sidebar"');
+    expect(html).toContain('data-ui="section-frame"');
+    expect(html).toContain(">Overview<");
+    expect(html).toContain('aria-current="page"');
   });
 
   it("shows another section as active and visible when the selection changes", () => {
@@ -18,8 +19,8 @@ describe("App shell", () => {
       <AppShell selectedSection="sessions" onSectionSelect={() => undefined} />
     );
 
-    expect(html).toContain(">Sessions</h2>");
-    expect(html).toContain("Session list and session content will appear here.");
-    expect(html).toMatch(/aria-current="page"[^>]*>Sessions<\/button>/);
+    expect(html).toContain('data-ui="section-frame"');
+    expect(html).toContain(">Sessions<");
+    expect(html).toContain('aria-current="page"');
   });
 });

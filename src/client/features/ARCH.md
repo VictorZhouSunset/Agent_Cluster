@@ -2,6 +2,7 @@
 User-facing dashboard feature modules.
 Each subfolder owns one screen or one shared feature primitive.
 Navigation metadata lives here because it binds the feature set together.
+The current UI favors a shared dark operations visual language across every feature.
 一旦我所属的文件夹有所变化，请更新我。
 
 | file name | position | function |

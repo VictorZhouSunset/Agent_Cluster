@@ -156,6 +156,8 @@ describe("SkillsScreen", () => {
     });
 
     await vi.waitFor(() => {
+      expect(container.querySelector('[data-ui="documents-list"]')).toBeTruthy();
+      expect(container.querySelector('[data-ui="documents-detail"]')).toBeTruthy();
       expect(container.textContent).toContain("Skills");
       expect(container.textContent).toContain("Node");
       expect(container.textContent).toContain("Planner");
@@ -283,6 +285,7 @@ describe("SkillsScreen", () => {
     });
 
     await vi.waitFor(() => {
+      expect(container.querySelector('[data-ui="document-header"]')).toBeTruthy();
       expect(container.querySelector("h1")?.textContent).toBe("Planner");
     });
 
@@ -448,6 +451,7 @@ describe("SkillsScreen", () => {
     });
 
     await vi.waitFor(() => {
+      expect(container.querySelector('[data-ui="document-preview"]')).toBeTruthy();
       expect(container.querySelector("h1")?.textContent).toBe("Remote Skill");
     });
 

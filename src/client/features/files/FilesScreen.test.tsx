@@ -145,6 +145,8 @@ describe("FilesScreen", () => {
     });
 
     await vi.waitFor(() => {
+      expect(container.querySelector('[data-ui="documents-list"]')).toBeTruthy();
+      expect(container.querySelector('[data-ui="documents-detail"]')).toBeTruthy();
       expect(container.textContent).toContain("AGENTS.md");
       expect(container.querySelector("h1")?.textContent).toBe("Agents");
       expect(container.querySelector("textarea")).toBeNull();
@@ -264,6 +266,7 @@ describe("FilesScreen", () => {
     });
 
     await vi.waitFor(() => {
+      expect(container.querySelector('[data-ui="document-header"]')).toBeTruthy();
       expect(container.querySelector("h1")?.textContent).toBe("Agents");
     });
 
@@ -429,6 +432,7 @@ describe("FilesScreen", () => {
     });
 
     await vi.waitFor(() => {
+      expect(container.querySelector('[data-ui="document-preview"]')).toBeTruthy();
       expect(container.querySelector("h1")?.textContent).toBe("Remote Agents");
     });
 

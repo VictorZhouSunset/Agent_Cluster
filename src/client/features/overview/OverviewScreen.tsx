@@ -1,10 +1,11 @@
 // input: health, node, and agent responses from the dashboard API client
-// output: overview screen states for loading, error, and successful cluster summaries
+// output: operational overview surfaces for cluster health, nodes, and agent activity using real backend fields
 // pos: overview feature screen for the client dashboard
 // 一旦我被更新，务必更新我的开头注释以及所属文件夹的md。
 import { useEffect, useState } from "react";
 import type { AgentStatus, ClusterNode, DashboardHealth } from "../../../shared/types";
 import { apiClient } from "../../lib/apiClient";
+import { formatLongDateTime, formatShortDateTime } from "../../lib/formatters";
 
 type OverviewState =
   | { status: "loading" }
@@ -15,6 +16,22 @@ type OverviewState =
       nodes: ClusterNode[];
       agents: AgentStatus[];
     };
+
+function getStatusTone(status: string) {
+  if (status === "healthy" || status === "idle" || status === "completed") {
+    return "status-badge status-badge--healthy";
+  }
+
+  if (status === "running" || status === "active" || status === "degraded") {
+    return "status-badge status-badge--degraded";
+  }
+
+  if (status === "error" || status === "offline") {
+    return "status-badge status-badge--error";
+  }
+
+  return "status-badge status-badge--neutral";
+}
 
 export function OverviewScreen() {
   const [state, setState] = useState<OverviewState>({ status: "loading" });
@@ -60,78 +77,141 @@ export function OverviewScreen() {
     };
   }, []);
 
+  if (state.status === "loading") {
+    return <p className="loading-copy">Loading cluster state...</p>;
+  }
+
+  if (state.status === "error") {
+    return (
+      <p className="error-copy" role="alert">
+        Unable to load overview data: {state.message}
+      </p>
+    );
+  }
+
+  const healthyNodeCount = state.nodes.filter((node) => node.status === "healthy").length;
+
   return (
-    <div style={{ marginTop: "2rem", display: "grid", gap: "1.5rem" }}>
-      <section>
-        <h3>Health</h3>
-        {state.status === "loading" ? <p>Loading overview data...</p> : null}
-        {state.status === "error" ? (
-          <p role="alert">Unable to load overview data: {state.message}</p>
-        ) : null}
-        {state.status === "success" ? (
-          <div
-            style={{
-              border: "1px solid #cbd5e1",
-              borderRadius: "0.75rem",
-              padding: "1rem",
-              backgroundColor: "#ffffff"
-            }}
-          >
-            <p style={{ margin: 0 }}>
-              <strong>Status:</strong> {state.health.status}
-            </p>
-            <p style={{ marginBottom: 0 }}>
-              <strong>Summary:</strong> {state.health.summary ?? "No summary provided."}
-            </p>
+    <div className="stack-grid">
+      <section className="panel metric-card" data-ui="overview-hero">
+        <div className="panel__body">
+          <div className="metric-card__kicker">Cluster Health</div>
+          <div className="badge-row">
+            <span className={getStatusTone(state.health.status)}>
+              {state.health.status}
+            </span>
+            <span className="status-badge status-badge--neutral">
+              {healthyNodeCount}/{state.nodes.length || 0} Healthy Nodes
+            </span>
+            <span className="status-badge status-badge--neutral">
+              {state.agents.length} Agent{state.agents.length === 1 ? "" : "s"}
+            </span>
           </div>
-        ) : null}
+          <h3 className="metric-card__value">Cluster Health</h3>
+          <p className="metric-card__detail">
+            {state.health.summary ?? "No summary provided by the backend."}
+          </p>
+          <div className="meta-line meta-line--mono">
+            <span>Checked {formatLongDateTime(state.health.checkedAt)}</span>
+          </div>
+        </div>
       </section>
 
-      <section>
-        <h3>Nodes</h3>
-        {state.status === "success" ? (
-          state.nodes.length > 0 ? (
-            <div style={{ display: "grid", gap: "0.75rem" }}>
-              {state.nodes.map((node) => (
-                <article
-                  key={node.id}
-                  style={{
-                    border: "1px solid #cbd5e1",
-                    borderRadius: "0.75rem",
-                    padding: "0.85rem 1rem",
-                    backgroundColor: "#ffffff"
-                  }}
-                >
-                  <strong>{node.name}</strong>
-                  <div>{node.kind} node</div>
-                  <div>Status: {node.status}</div>
-                  {node.summary ? <div>{node.summary}</div> : null}
-                </article>
-              ))}
+      <div className="two-column-grid">
+        <section className="panel panel--soft" data-ui="overview-nodes">
+          <div className="panel__header">
+            <div>
+              <h3 className="panel__title">Nodes</h3>
+              <p className="panel__subtitle">
+                Deployment shape and capability support across the visible cluster.
+              </p>
             </div>
-          ) : (
-            <p>No nodes found.</p>
-          )
-        ) : null}
-      </section>
+          </div>
+          <div className="panel__body">
+            {state.nodes.length > 0 ? (
+              <div className="item-list">
+                {state.nodes.map((node) => (
+                  <article className="item-card" key={node.id}>
+                    <div className="badge-row">
+                      <span className={getStatusTone(node.status)}>{node.status}</span>
+                      <span className="status-badge status-badge--neutral">{node.kind}</span>
+                      <span className="status-badge status-badge--neutral">{node.origin}</span>
+                    </div>
+                    <h4 className="item-card__title">{node.name}</h4>
+                    <div className="meta-line meta-line--mono">
+                      <span>{node.id}</span>
+                      <span>Checked {formatShortDateTime(node.checkedAt)}</span>
+                    </div>
+                    <p className="item-card__summary">
+                      {node.summary ?? "No node summary provided."}
+                    </p>
+                    <div className="badge-row">
+                      {node.supportsSessions ? (
+                        <span className="status-badge status-badge--neutral">
+                          Sessions
+                        </span>
+                      ) : null}
+                      {node.supportsSkills ? (
+                        <span className="status-badge status-badge--neutral">
+                          Skills
+                        </span>
+                      ) : null}
+                      {node.supportsFiles ? (
+                        <span className="status-badge status-badge--neutral">
+                          Files
+                        </span>
+                      ) : null}
+                      {node.supportsWrites ? (
+                        <span className="status-badge status-badge--neutral">
+                          Writes
+                        </span>
+                      ) : null}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <p className="empty-copy">No nodes found.</p>
+            )}
+          </div>
+        </section>
 
-      <section>
-        <h3>Agents</h3>
-        {state.status === "success" ? (
-          state.agents.length > 0 ? (
-            <ul style={{ paddingLeft: "1.25rem", margin: 0 }}>
-              {state.agents.map((agent) => (
-                <li key={agent.id}>
-                  <strong>{agent.name}</strong>: {agent.status}
-                  {agent.nodeName ? ` (${agent.nodeName})` : ""}
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p>No agents found.</p>
-          )
-        ) : null}
-      </section>
+        <section className="panel panel--soft" data-ui="overview-agents">
+          <div className="panel__header">
+            <div>
+              <h3 className="panel__title">Agents</h3>
+              <p className="panel__subtitle">
+                Real lifecycle data from the dashboard backend, without synthetic telemetry.
+              </p>
+            </div>
+          </div>
+          <div className="panel__body">
+            {state.agents.length > 0 ? (
+              <div className="item-list">
+                {state.agents.map((agent) => (
+                  <article className="item-card" key={agent.id}>
+                    <div className="badge-row">
+                      <span className={getStatusTone(agent.status)}>{agent.status}</span>
+                    </div>
+                    <h4 className="item-card__title">{agent.name}</h4>
+                    <div className="meta-line meta-line--mono">
+                      {agent.nodeName ? <span>{agent.nodeName}</span> : null}
+                      {agent.updatedAt ? (
+                        <span>Updated {formatShortDateTime(agent.updatedAt)}</span>
+                      ) : null}
+                    </div>
+                    <p className="item-card__summary">
+                      {agent.summary ?? "No agent summary provided."}
+                    </p>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <p className="empty-copy">No agents found.</p>
+            )}
+          </div>
+        </section>
+      </div>
     </div>
   );
 }

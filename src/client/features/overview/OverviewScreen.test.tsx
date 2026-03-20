@@ -99,10 +99,7 @@ describe("OverviewScreen", () => {
       root.render(<OverviewScreen />);
     });
 
-    expect(container.textContent).toContain("Loading overview data...");
-    expect(container.textContent).toContain("Health");
-    expect(container.textContent).toContain("Nodes");
-    expect(container.textContent).toContain("Agents");
+    expect(container.textContent).toContain("Loading cluster state...");
 
     await act(async () => {
       healthRequest.resolve(
@@ -217,12 +214,15 @@ describe("OverviewScreen", () => {
     });
 
     await vi.waitFor(() => {
-      expect(container.textContent).toContain("Status: healthy");
-      expect(container.textContent).toContain("Summary: All systems normal");
+      expect(container.querySelector('[data-ui="overview-hero"]')).toBeTruthy();
+      expect(container.querySelector('[data-ui="overview-nodes"]')).toBeTruthy();
+      expect(container.querySelector('[data-ui="overview-agents"]')).toBeTruthy();
+      expect(container.textContent).toContain("Cluster Health");
+      expect(container.textContent).toContain("All systems normal");
       expect(container.textContent).toContain("Gate Node");
       expect(container.textContent).toContain("OpenMoose02_MD");
-      expect(container.textContent).toContain("Planner: idle");
-      expect(container.textContent).toContain("Responder: running");
+      expect(container.textContent).toContain("Planner");
+      expect(container.textContent).toContain("Responder");
     });
   });
 

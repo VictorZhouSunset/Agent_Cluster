@@ -73,7 +73,8 @@ describe("SessionsScreen", () => {
     });
 
     expect(container.textContent).toContain("Sessions");
-    expect(container.textContent).toContain("Session Detail");
+    expect(container.querySelector('[data-ui="sessions-list"]')).toBeTruthy();
+    expect(container.querySelector('[data-ui="session-detail"]')).toBeTruthy();
     expect(container.textContent).toContain("Loading sessions...");
     expect(container.textContent).toContain("Select a session to view its detail.");
 
@@ -148,6 +149,7 @@ describe("SessionsScreen", () => {
     });
 
     await vi.waitFor(() => {
+      expect(container.querySelector('[data-ui="session-detail"]')).toBeTruthy();
       expect(container.textContent).toContain("Morning Run");
       expect(container.textContent).toContain("Evening Review");
       expect(container.textContent).toContain("Ready to help");
@@ -249,6 +251,9 @@ describe("SessionsScreen", () => {
 
     await vi.waitFor(() => {
       expect(container.textContent).toContain("Review complete");
+      expect(
+        container.querySelector('[data-message-role="assistant"]')
+      ).toBeTruthy();
       const selectedButton = container.querySelector('button[aria-pressed="true"]');
       expect(selectedButton?.textContent).toContain("Evening Review");
       expect(fetchMock).toHaveBeenCalledWith("/api/sessions/session-2", {

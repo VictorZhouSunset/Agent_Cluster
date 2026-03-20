@@ -1,5 +1,5 @@
 // input: editable document API functions plus screen copy for one document category
-// output: shared list/detail workflow that hosts the preview-first markdown editor for files or skills
+// output: shared Gemini-inspired list/detail workflow for files and skills backed by the current API
 // pos: reusable document workspace orchestrator inside the client documents feature
 // 一旦我被更新，务必更新我的开头注释以及所属文件夹的md。
 import { useEffect, useState } from "react";
@@ -7,6 +7,7 @@ import type {
   EditableDocument,
   EditableDocumentContent
 } from "../../../shared/types";
+import { formatShortDateTime } from "../../lib/formatters";
 import { DocumentEditor } from "./DocumentEditor";
 
 type DocumentsState =
@@ -44,10 +45,7 @@ type EditableDocumentsScreenProps = {
   ) => Promise<EditableDocumentContent>;
 };
 
-function getErrorMessage(
-  error: unknown,
-  fallbackMessage: string
-) {
+function getErrorMessage(error: unknown, fallbackMessage: string) {
   return error instanceof Error ? error.message : fallbackMessage;
 }
 
@@ -89,8 +87,6 @@ export function EditableDocumentsScreen({
           status: "success",
           documents
         });
-        // Preserve the current selection when possible, but auto-pick the first
-        // document so the first render shows useful content.
         setSelectedDocumentId((currentId) => currentId ?? documents[0]?.id ?? null);
       } catch (error) {
         if (!isActive) {
@@ -185,65 +181,67 @@ export function EditableDocumentsScreen({
   const isSaving = saveState.status === "saving";
 
   return (
-    <div
-      style={{
-        marginTop: "2rem",
-        display: "grid",
-        gridTemplateColumns: "minmax(220px, 320px) minmax(0, 1fr)",
-        gap: "1.5rem"
-      }}
-    >
-      <section style={{ minWidth: 0 }}>
-        <h3>{collectionTitle}</h3>
-        {documentsState.status === "loading" ? (
-          <p>{loadingCollectionMessage}</p>
-        ) : null}
-        {documentsState.status === "error" ? (
-          <p role="alert">
-            {loadCollectionErrorPrefix}: {documentsState.message}
-          </p>
-        ) : null}
-        {documentsState.status === "success" ? (
-          documents.length > 0 ? (
-            <div style={{ display: "grid", gap: "0.75rem" }}>
-              {documents.map((document) => {
-                const isSelected = document.id === selectedDocumentId;
+    <div className="split-layout">
+      <section className="panel split-panel" data-ui="documents-list">
+        <div className="panel__header">
+          <div>
+            <h3 className="panel__title">{collectionTitle}</h3>
+            <p className="panel__subtitle">
+              Select an allowlisted document to preview or edit.
+            </p>
+          </div>
+        </div>
+        <div className="panel__body list-shell">
+          {documentsState.status === "loading" ? (
+            <p className="loading-copy">{loadingCollectionMessage}</p>
+          ) : null}
+          {documentsState.status === "error" ? (
+            <p className="error-copy" role="alert">
+              {loadCollectionErrorPrefix}: {documentsState.message}
+            </p>
+          ) : null}
+          {documentsState.status === "success" ? (
+            documents.length > 0 ? (
+              <div className="list-scroll">
+                {documents.map((document) => {
+                  const isSelected = document.id === selectedDocumentId;
 
-                return (
-                  <button
-                    key={document.id}
-                    type="button"
-                    disabled={isSaving}
-                    onClick={() => setSelectedDocumentId(document.id)}
-                    aria-pressed={isSelected}
-                    style={{
-                      textAlign: "left",
-                      border: "1px solid #cbd5e1",
-                      borderRadius: "0.75rem",
-                      padding: "0.85rem 1rem",
-                      backgroundColor: isSelected ? "#e2e8f0" : "#ffffff",
-                      cursor: isSaving ? "wait" : "pointer",
-                      opacity: isSaving ? 0.7 : 1
-                    }}
-                  >
-                    <strong>{document.name}</strong>
-                    <div>{document.path}</div>
-                  </button>
-                );
-              })}
-            </div>
-          ) : (
-            <p>{emptyMessage}</p>
-          )
-        ) : null}
+                  return (
+                    <button
+                      key={document.id}
+                      className="list-button"
+                      type="button"
+                      disabled={isSaving}
+                      onClick={() => setSelectedDocumentId(document.id)}
+                      aria-pressed={isSelected}
+                    >
+                      <span className="list-button__title">{document.name}</span>
+                      <div className="list-button__meta">
+                        <span>{document.path}</span>
+                        {document.updatedAt ? (
+                          <span>{formatShortDateTime(document.updatedAt)}</span>
+                        ) : null}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="empty-copy">{emptyMessage}</p>
+            )
+          ) : null}
+        </div>
       </section>
 
-      <section style={{ minWidth: 0 }}>
-        <h3>{editorTitle}</h3>
-        {detailState.status === "idle" ? <p>{idleDetailMessage}</p> : null}
-        {detailState.status === "loading" ? <p>{loadingDetailMessage}</p> : null}
+      <section className="split-panel" data-ui="documents-detail">
+        {detailState.status === "idle" ? (
+          <p className="empty-copy">{idleDetailMessage}</p>
+        ) : null}
+        {detailState.status === "loading" ? (
+          <p className="loading-copy">{loadingDetailMessage}</p>
+        ) : null}
         {detailState.status === "error" ? (
-          <p role="alert">
+          <p className="error-copy" role="alert">
             {loadDetailErrorPrefix}: {detailState.message}
           </p>
         ) : null}
