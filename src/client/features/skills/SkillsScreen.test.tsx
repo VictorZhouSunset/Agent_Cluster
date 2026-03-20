@@ -1,5 +1,5 @@
-// input: mocked skill API responses and simulated editor/list interactions
-// output: assertions for the skills workspace list, editor, and save-lock behavior
+// input: mocked skill API responses and simulated preview, edit, and save interactions
+// output: assertions for the skills workspace list, rendered preview mode, and save-lock behavior
 // pos: integration tests for the skills feature wrapper around the shared document workspace
 // 一旦我被更新，务必更新我的开头注释以及所属文件夹的md。
 // @vitest-environment jsdom
@@ -159,9 +159,16 @@ describe("SkillsScreen", () => {
       expect(container.textContent).toContain("Skills");
       expect(container.textContent).toContain("Node");
       expect(container.textContent).toContain("Planner");
-      expect((container.querySelector("textarea") as HTMLTextAreaElement)?.value).toBe(
-        "# Planner"
-      );
+      expect(container.querySelector("h1")?.textContent).toBe("Planner");
+      expect(container.querySelector("textarea")).toBeNull();
+    });
+
+    const editButton = Array.from(container.querySelectorAll("button")).find(
+      (button) => button.textContent === "Edit"
+    );
+
+    await act(async () => {
+      editButton?.click();
     });
 
     const textarea = container.querySelector("textarea");
@@ -276,9 +283,15 @@ describe("SkillsScreen", () => {
     });
 
     await vi.waitFor(() => {
-      expect((container.querySelector("textarea") as HTMLTextAreaElement)?.value).toBe(
-        "# Planner"
-      );
+      expect(container.querySelector("h1")?.textContent).toBe("Planner");
+    });
+
+    const editButton = Array.from(container.querySelectorAll("button")).find(
+      (button) => button.textContent === "Edit"
+    );
+
+    await act(async () => {
+      editButton?.click();
     });
 
     const textarea = container.querySelector("textarea") as HTMLTextAreaElement;
@@ -435,7 +448,7 @@ describe("SkillsScreen", () => {
     });
 
     await vi.waitFor(() => {
-      expect((container.querySelector("textarea") as HTMLTextAreaElement)?.value).toBe("# Remote Skill");
+      expect(container.querySelector("h1")?.textContent).toBe("Remote Skill");
     });
 
     expect(fetchMock).toHaveBeenCalledWith("/api/skills?node=agent-2", {

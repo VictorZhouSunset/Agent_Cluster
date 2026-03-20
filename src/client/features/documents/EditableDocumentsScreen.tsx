@@ -1,5 +1,5 @@
 // input: editable document API functions plus screen copy for one document category
-// output: shared list/detail editor workflow for skills or allowlisted markdown files
+// output: shared list/detail workflow that hosts the preview-first markdown editor for files or skills
 // pos: reusable document workspace orchestrator inside the client documents feature
 // 一旦我被更新，务必更新我的开头注释以及所属文件夹的md。
 import { useEffect, useState } from "react";
@@ -189,11 +189,11 @@ export function EditableDocumentsScreen({
       style={{
         marginTop: "2rem",
         display: "grid",
-        gridTemplateColumns: "minmax(220px, 320px) 1fr",
+        gridTemplateColumns: "minmax(220px, 320px) minmax(0, 1fr)",
         gap: "1.5rem"
       }}
     >
-      <section>
+      <section style={{ minWidth: 0 }}>
         <h3>{collectionTitle}</h3>
         {documentsState.status === "loading" ? (
           <p>{loadingCollectionMessage}</p>
@@ -238,7 +238,7 @@ export function EditableDocumentsScreen({
         ) : null}
       </section>
 
-      <section>
+      <section style={{ minWidth: 0 }}>
         <h3>{editorTitle}</h3>
         {detailState.status === "idle" ? <p>{idleDetailMessage}</p> : null}
         {detailState.status === "loading" ? <p>{loadingDetailMessage}</p> : null}

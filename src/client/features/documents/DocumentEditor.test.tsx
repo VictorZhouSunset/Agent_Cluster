@@ -1,6 +1,6 @@
-// input: document editor props and simulated user edits during editor-only tests
-// output: assertions for editor save, save-state locking, and status-message behavior
-// pos: focused unit tests for the reusable markdown editor component
+// input: document editor props and simulated user interactions across preview, edit, and save flows
+// output: assertions for rendered markdown preview, editor mode transitions, save locking, and status feedback
+// pos: focused unit tests for the reusable dashboard document editor component
 // 一旦我被更新，务必更新我的开头注释以及所属文件夹的md。
 // @vitest-environment jsdom
 
@@ -46,10 +46,24 @@ describe("DocumentEditor", () => {
       root.render(
         <DocumentEditor
           title="AGENTS.md"
-          content="# Agents"
+          content="# Agents\n\n**Careful**"
           onSave={onSave}
         />
       );
+    });
+
+    expect(container.querySelector("textarea")).toBeNull();
+    expect(container.querySelector("h1")?.textContent).toContain("Agents");
+    expect(container.querySelector("strong")?.textContent).toContain("Careful");
+
+    const editButton = Array.from(container.querySelectorAll("button")).find(
+      (button) => button.textContent === "Edit"
+    );
+
+    expect(editButton).toBeDefined();
+
+    await act(async () => {
+      editButton?.click();
     });
 
     const textarea = container.querySelector("textarea");
@@ -58,7 +72,10 @@ describe("DocumentEditor", () => {
     );
 
     expect(textarea).toBeInstanceOf(HTMLTextAreaElement);
-    expect(textarea?.value).toBe("# Agents");
+    expect(textarea?.value).toContain("# Agents");
+    expect(textarea?.value).toContain("**Careful**");
+    expect((textarea as HTMLTextAreaElement).style.maxWidth).toBe("100%");
+    expect((textarea as HTMLTextAreaElement).style.boxSizing).toBe("border-box");
     expect(saveButton).toBeDefined();
 
     await act(async () => {
@@ -67,6 +84,44 @@ describe("DocumentEditor", () => {
     });
 
     expect(onSave).toHaveBeenCalledWith("# Updated");
+  });
+
+  it("restores the preview when editing is canceled", async () => {
+    await act(async () => {
+      root.render(
+        <DocumentEditor
+          title="AGENTS.md"
+          content="# Agents"
+          onSave={vi.fn().mockResolvedValue(undefined)}
+        />
+      );
+    });
+
+    const editButton = Array.from(container.querySelectorAll("button")).find(
+      (button) => button.textContent === "Edit"
+    );
+
+    await act(async () => {
+      editButton?.click();
+    });
+
+    const textarea = container.querySelector("textarea");
+
+    await act(async () => {
+      changeTextareaValue(textarea as HTMLTextAreaElement, "# Unsaved changes");
+    });
+
+    const cancelButton = Array.from(container.querySelectorAll("button")).find(
+      (button) => button.textContent === "Cancel"
+    );
+
+    await act(async () => {
+      cancelButton?.click();
+    });
+
+    expect(container.querySelector("textarea")).toBeNull();
+    expect(container.querySelector("h1")?.textContent).toBe("Agents");
+    expect(container.textContent).not.toContain("Unsaved changes");
   });
 
   it("hides the saved status message once the draft changes again", async () => {
@@ -82,6 +137,14 @@ describe("DocumentEditor", () => {
     });
 
     expect(container.textContent).toContain("Changes saved.");
+
+    const editButton = Array.from(container.querySelectorAll("button")).find(
+      (button) => button.textContent === "Edit"
+    );
+
+    await act(async () => {
+      editButton?.click();
+    });
 
     const textarea = container.querySelector("textarea");
 
@@ -113,5 +176,10 @@ describe("DocumentEditor", () => {
     expect((textarea as HTMLTextAreaElement).disabled).toBe(true);
     expect(saveButton).toBeDefined();
     expect((saveButton as HTMLButtonElement).disabled).toBe(true);
+    expect(
+      Array.from(container.querySelectorAll("button")).find(
+        (button) => button.textContent === "Cancel"
+      )
+    ).toBeDefined();
   });
 });
