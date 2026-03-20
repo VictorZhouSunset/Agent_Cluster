@@ -30,6 +30,7 @@ export function isFixedEditableDocumentId(documentId: EditableDocumentId): docum
 }
 
 export const SKILL_ID_PREFIX = "skill:";
+export const BUNDLED_SKILL_SCOPE = "bundled";
 export const MANAGED_SKILL_SCOPE = "managed";
 export const WORKSPACE_SKILL_SCOPE = "workspace";
 export const SKILL_NAME_PATTERN = /^(?!\.{1,2}$)[A-Za-z0-9._-]+$/;

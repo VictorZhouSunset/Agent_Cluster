@@ -14,7 +14,7 @@ import { EditableDocumentsScreen } from "./EditableDocumentsScreen";
 type NodeScopedDocumentsScreenProps = {
   kind: "file" | "skill";
   collectionTitle: string;
-  editorTitle: string;
+  listDescription?: string;
   emptyMessage: string;
   loadingCollectionMessage: string;
   loadingDetailMessage: string;
@@ -22,6 +22,7 @@ type NodeScopedDocumentsScreenProps = {
   loadCollectionErrorPrefix: string;
   loadDetailErrorPrefix: string;
   saveErrorPrefix: string;
+  groupDocumentsBySource?: boolean;
   listDocuments: (nodeId?: string) => Promise<EditableDocument[]>;
   readDocument: (
     documentId: string,
@@ -54,7 +55,7 @@ function toApiNodeId(node: ClusterNode | undefined) {
 export function NodeScopedDocumentsScreen({
   kind,
   collectionTitle,
-  editorTitle,
+  listDescription,
   emptyMessage,
   loadingCollectionMessage,
   loadingDetailMessage,
@@ -62,6 +63,7 @@ export function NodeScopedDocumentsScreen({
   loadCollectionErrorPrefix,
   loadDetailErrorPrefix,
   saveErrorPrefix,
+  groupDocumentsBySource = false,
   listDocuments,
   readDocument,
   saveDocument
@@ -141,7 +143,7 @@ export function NodeScopedDocumentsScreen({
       <EditableDocumentsScreen
         key={selectedNode?.id ?? "local"}
         collectionTitle={collectionTitle}
-        editorTitle={editorTitle}
+        listDescription={listDescription}
         emptyMessage={emptyMessage}
         loadingCollectionMessage={loadingCollectionMessage}
         loadingDetailMessage={loadingDetailMessage}
@@ -149,6 +151,7 @@ export function NodeScopedDocumentsScreen({
         loadCollectionErrorPrefix={loadCollectionErrorPrefix}
         loadDetailErrorPrefix={loadDetailErrorPrefix}
         saveErrorPrefix={saveErrorPrefix}
+        groupDocumentsBySource={groupDocumentsBySource}
         listDocuments={() => listDocuments(apiNodeId)}
         readDocument={(documentId) => readDocument(documentId, apiNodeId)}
         saveDocument={(documentId, content) =>

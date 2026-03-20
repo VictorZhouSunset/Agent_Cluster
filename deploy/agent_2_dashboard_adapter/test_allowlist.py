@@ -11,6 +11,7 @@ import unittest
 try:
     from .allowlist import (
         AllowlistError,
+        build_bundled_skill_document,
         list_local_documents,
         read_local_document,
         resolve_document_target,
@@ -19,6 +20,7 @@ try:
 except ImportError:  # pragma: no cover - direct execution fallback
     from allowlist import (
         AllowlistError,
+        build_bundled_skill_document,
         list_local_documents,
         read_local_document,
         resolve_document_target,
@@ -80,6 +82,22 @@ class AllowlistTests(unittest.TestCase):
                     os.path.join(root_dir, ".openclaw", "workspace", "AGENTS.md")
                 ),
             )
+
+    def test_build_bundled_skill_document_marks_it_read_only(self) -> None:
+        with tempfile.TemporaryDirectory() as root_dir:
+            bundled_skill_path = os.path.join(
+                root_dir, "openclaw-install", "skills", "healthcheck", "SKILL.md"
+            )
+            os.makedirs(os.path.dirname(bundled_skill_path), exist_ok=True)
+            with open(bundled_skill_path, "w", encoding="utf-8") as handle:
+                handle.write("# Healthcheck")
+
+            document = build_bundled_skill_document("healthcheck", bundled_skill_path)
+
+            self.assertEqual(document["id"], "skill:bundled:healthcheck")
+            self.assertEqual(document["source"], "bundled")
+            self.assertFalse(document["editable"])
+            self.assertEqual(document["path"], bundled_skill_path)
 
 
 if __name__ == "__main__":

@@ -4,6 +4,7 @@
 // 一旦我被更新，务必更新我的开头注释以及所属文件夹的md。
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { FilesystemProvider } from "../providers/filesystem/types.js";
+import { ReadOnlyDocumentError } from "../providers/filesystem/localFilesystemProvider.js";
 import type { OpenClawProvider } from "../providers/openclaw/types.js";
 import { handleAgentsRoute } from "./agents.js";
 import { handleDocumentsRoute } from "./documents.js";
@@ -55,6 +56,10 @@ function isInvalidPathError(error: unknown): error is URIError {
 
 function isInvalidJsonBodyError(error: unknown): error is InvalidJsonBodyError {
   return error instanceof InvalidJsonBodyError;
+}
+
+function isReadOnlyDocumentError(error: unknown): error is ReadOnlyDocumentError {
+  return error instanceof ReadOnlyDocumentError;
 }
 
 export function createAppRouter(dependencies: AppRouterDependencies) {
@@ -126,6 +131,11 @@ export function createAppRouter(dependencies: AppRouterDependencies) {
 
       if (isAllowlistError(error) || isMissingError(error)) {
         sendStructuredError(response, 404, "not_found", "Requested resource was not found.");
+        return true;
+      }
+
+      if (isReadOnlyDocumentError(error)) {
+        sendStructuredError(response, 405, "read_only", error.message);
         return true;
       }
 

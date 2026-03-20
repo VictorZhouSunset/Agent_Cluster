@@ -1,5 +1,5 @@
 # input: environment configuration, local OpenClaw-backed documents, and remote node HTTP control-plane APIs
-# output: dashboard-shaped health, node, agent, and document data for the adapter HTTP layer
+# output: dashboard-shaped health, node, agent, and document data for the adapter HTTP layer with bundled-ready skill support
 # pos: service layer that bridges the dashboard adapter to agent_2 local state and remote cluster nodes
 # 一旦我被更新，务必更新我的开头注释以及所属文件夹的md。
 from __future__ import annotations
@@ -8,13 +8,18 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 import json
 import os
+import re
+import shutil
 import socket
+import subprocess
 from typing import Any, Dict, List, Mapping, Optional
 from urllib import error, parse, request
 
 try:
     from .allowlist import (
+        BUNDLED_SKILL_SCOPE,
         FIXED_DOCUMENT_PATHS,
+        build_bundled_skill_document,
         list_local_documents,
         read_local_document,
         resolve_document_target,
@@ -22,7 +27,9 @@ try:
     )
 except ImportError:  # pragma: no cover - direct execution fallback
     from allowlist import (
+        BUNDLED_SKILL_SCOPE,
         FIXED_DOCUMENT_PATHS,
+        build_bundled_skill_document,
         list_local_documents,
         read_local_document,
         resolve_document_target,
@@ -220,6 +227,32 @@ def _remote_supports_documents(
     )
 
 
+def _parse_ready_bundled_skill_names(output: str) -> List[str]:
+    names: List[str] = []
+    seen = set()
+
+    for line in output.splitlines():
+        if "│" not in line:
+            continue
+        cells = [cell.strip() for cell in line.split("│")]
+        cells = [cell for cell in cells if cell != ""]
+        if len(cells) < 4:
+            continue
+        status, skill_cell, _description, source = cells[:4]
+        if source != "openclaw-bundled" or "ready" not in status:
+            continue
+        match = re.search(r"[A-Za-z0-9][A-Za-z0-9._-]*", skill_cell)
+        if match is None:
+            continue
+        skill_name = match.group(0)
+        if skill_name in seen:
+            continue
+        seen.add(skill_name)
+        names.append(skill_name)
+
+    return names
+
+
 class DashboardAdapterService:
     def __init__(self, config: AdapterConfig):
         self.config = config
@@ -395,6 +428,70 @@ class DashboardAdapterService:
                 return node
         raise AdapterRequestError(f'Unknown node "{node_id}".')
 
+    def _resolve_openclaw_install_dir(self) -> Optional[str]:
+        configured_install_dir = os.environ.get(
+            "DASHBOARD_ADAPTER_OPENCLAW_INSTALL_DIR"
+        ) or os.environ.get("OPENCLAW_INSTALL_DIR")
+        if configured_install_dir:
+            return os.path.abspath(configured_install_dir)
+
+        executable_path = os.environ.get("DASHBOARD_ADAPTER_OPENCLAW_EXECUTABLE")
+        if not executable_path:
+            executable_path = shutil.which("openclaw")
+
+        if not executable_path:
+            return None
+
+        return os.path.abspath(
+            os.path.join(
+                os.path.dirname(executable_path), "..", "lib", "node_modules", "openclaw"
+            )
+        )
+
+    def _list_ready_bundled_skills(self) -> List[Dict[str, Any]]:
+        install_dir = self._resolve_openclaw_install_dir()
+        if not install_dir:
+            return []
+
+        executable_path = (
+            os.environ.get("DASHBOARD_ADAPTER_OPENCLAW_EXECUTABLE") or shutil.which("openclaw")
+        )
+        if not executable_path:
+            return []
+
+        try:
+            result = subprocess.run(
+                [executable_path, "skills", "list", "--eligible"],
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=15,
+            )
+        except (OSError, subprocess.SubprocessError):
+            return []
+
+        if result.returncode != 0:
+            return []
+
+        documents: List[Dict[str, Any]] = []
+        for skill_name in _parse_ready_bundled_skill_names(result.stdout):
+            absolute_path = os.path.join(
+                install_dir, "skills", skill_name, "SKILL.md"
+            )
+            if os.path.isfile(absolute_path):
+                documents.append(build_bundled_skill_document(skill_name, absolute_path))
+        return documents
+
+    def _read_bundled_skill_document(self, document_id: str) -> Dict[str, Any]:
+        bundled_documents = self._list_ready_bundled_skills()
+        for document in bundled_documents:
+            if document["id"] != document_id:
+                continue
+            with open(document["path"], "r", encoding="utf-8") as handle:
+                content = handle.read()
+            return {**document, "content": content}
+        raise FileNotFoundError(document_id)
+
     def _remote_list_documents(
         self, node: RemoteNodeConfig, kind: str
     ) -> List[Dict[str, Any]]:
@@ -454,6 +551,12 @@ class DashboardAdapterService:
                     "name": target.name,
                     "path": target.relative_path,
                     "kind": "skill",
+                    "source": (
+                        "managed"
+                        if target.document_id.startswith("skill:managed:")
+                        else "workspace"
+                    ),
+                    "editable": True,
                     "updatedAt": utc_now_iso(),
                 }
             )
@@ -475,6 +578,14 @@ class DashboardAdapterService:
             "name": target.name,
             "path": target.relative_path,
             "kind": target.kind,
+            "source": (
+                "managed"
+                if target.document_id.startswith("skill:managed:")
+                else "workspace"
+            )
+            if target.kind == "skill"
+            else "fixed",
+            "editable": True,
             "updatedAt": utc_now_iso(),
             "content": content,
         }
@@ -494,7 +605,13 @@ class DashboardAdapterService:
     def list_documents(self, kind: str, node_id: Optional[str]) -> List[Dict[str, Any]]:
         remote_node = self._resolve_node(node_id)
         if remote_node is None:
-            return list_local_documents(self.config.root_dir, kind)
+            documents = list_local_documents(self.config.root_dir, kind)
+            if kind == "skill":
+                return sorted(
+                    [*self._list_ready_bundled_skills(), *documents],
+                    key=lambda item: str(item["id"]),
+                )
+            return documents
         return self._remote_list_documents(remote_node, kind)
 
     def read_document(
@@ -502,6 +619,10 @@ class DashboardAdapterService:
     ) -> Dict[str, Any]:
         remote_node = self._resolve_node(node_id)
         if remote_node is None:
+            if kind == "skill" and document_id.startswith(
+                f"{BUNDLED_SKILL_SCOPE}:"
+            ):
+                return self._read_bundled_skill_document(f"skill:{document_id}")
             return read_local_document(self.config.root_dir, kind, document_id)
         return self._remote_read_document(remote_node, kind, document_id)
 
@@ -510,6 +631,10 @@ class DashboardAdapterService:
     ) -> Dict[str, Any]:
         remote_node = self._resolve_node(node_id)
         if remote_node is None:
+            if kind == "skill" and document_id.startswith(
+                f"{BUNDLED_SKILL_SCOPE}:"
+            ):
+                raise ValueError(f'Document "skill:{document_id}" is read-only.')
             return write_local_document(
                 self.config.root_dir, kind, document_id, content
             )

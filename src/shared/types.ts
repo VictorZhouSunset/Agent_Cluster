@@ -72,12 +72,15 @@ export interface SessionDetail extends SessionSummary {
 
 export type EditableDocumentKind = "file" | "skill";
 export type EditableDocumentId = string;
+export type EditableDocumentSource = "fixed" | "bundled" | "managed" | "workspace";
 
 export interface EditableDocument {
   id: EditableDocumentId;
   name: string;
   path: string;
   kind: EditableDocumentKind;
+  source?: EditableDocumentSource;
+  editable?: boolean;
   updatedAt?: string;
 }
 

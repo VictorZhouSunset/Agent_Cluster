@@ -21,6 +21,7 @@ FIXED_DOCUMENT_PATHS: Dict[str, str] = {
 }
 
 SKILL_ID_PREFIX = "skill:"
+BUNDLED_SKILL_SCOPE = "bundled"
 MANAGED_SKILL_SCOPE = "managed"
 WORKSPACE_SKILL_SCOPE = "workspace"
 SKILL_NAME_PATTERN = re.compile(r"^(?!\.{1,2}$)[A-Za-z0-9._-]+$")
@@ -74,11 +75,24 @@ def _parse_skill_target(document_id: str) -> tuple[str, str]:
 
 
 def _skill_display_name(skill_name: str, scope: str) -> str:
-    return (
-        f"{skill_name} (managed)"
-        if scope == MANAGED_SKILL_SCOPE
-        else f"{skill_name} (workspace)"
-    )
+    if scope == MANAGED_SKILL_SCOPE:
+        return f"{skill_name} (managed)"
+    if scope == WORKSPACE_SKILL_SCOPE:
+        return f"{skill_name} (workspace)"
+    return skill_name
+
+
+def build_bundled_skill_document(skill_name: str, absolute_path: str) -> Dict[str, str]:
+    stat_result = os.stat(absolute_path)
+    return {
+        "id": f"{SKILL_ID_PREFIX}{BUNDLED_SKILL_SCOPE}:{skill_name}",
+        "name": _skill_display_name(skill_name, BUNDLED_SKILL_SCOPE),
+        "path": absolute_path,
+        "kind": "skill",
+        "source": BUNDLED_SKILL_SCOPE,
+        "editable": False,
+        "updatedAt": timestamp_from_stat(stat_result),
+    }
 
 
 def resolve_document_target(kind: str, document_id: str) -> DocumentTarget:
@@ -127,8 +141,18 @@ def build_document_payload(
         "name": target.name,
         "path": absolute_path,
         "kind": target.kind,
+        "source": "fixed" if target.kind == "file" else None,
+        "editable": True,
         "updatedAt": timestamp_from_stat(stat_result),
     }
+    if target.kind == "skill":
+        payload["source"] = (
+            MANAGED_SKILL_SCOPE
+            if target.document_id.startswith(f"{SKILL_ID_PREFIX}{MANAGED_SKILL_SCOPE}:")
+            else WORKSPACE_SKILL_SCOPE
+        )
+    if payload["source"] is None:
+        del payload["source"]
     if content is not None:
         payload["content"] = content
     return payload

@@ -66,6 +66,155 @@ describe("SkillsScreen", () => {
     vi.restoreAllMocks();
   });
 
+  it("groups bundled, managed, and workspace skills while keeping bundled skills read-only", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+        const url = typeof input === "string" ? input : input.toString();
+
+        if (url.endsWith("/api/nodes")) {
+          return Promise.resolve(
+            jsonResponse({
+              data: [
+                {
+                  id: "openmoose03-cio",
+                  name: "OpenMoose03_CIO",
+                  kind: "gate",
+                  origin: "local",
+                  status: "healthy",
+                  checkedAt: "2026-03-16T00:00:00.000Z",
+                  supportsSessions: true,
+                  supportsSkills: true,
+                  supportsFiles: true,
+                  supportsWrites: true
+                }
+              ]
+            })
+          );
+        }
+
+        if (url.endsWith("/api/skills") && !init?.method) {
+          return Promise.resolve(
+            jsonResponse({
+              data: [
+                {
+                  id: "skill:bundled:healthcheck",
+                  name: "healthcheck",
+                  path: "/opt/openclaw/skills/healthcheck/SKILL.md",
+                  kind: "skill",
+                  source: "bundled",
+                  editable: false
+                },
+                {
+                  id: "skill:managed:reviewer",
+                  name: "reviewer",
+                  path: "/home/ec2-user/.openclaw/skills/reviewer/SKILL.md",
+                  kind: "skill",
+                  source: "managed",
+                  editable: true
+                },
+                {
+                  id: "skill:workspace:planner",
+                  name: "planner",
+                  path: "/home/ec2-user/.openclaw/workspace/skills/planner/SKILL.md",
+                  kind: "skill",
+                  source: "workspace",
+                  editable: true
+                }
+              ]
+            })
+          );
+        }
+
+        if (url.endsWith("/api/skills/bundled%3Ahealthcheck") && !init?.method) {
+          return Promise.resolve(
+            jsonResponse({
+              data: {
+                id: "skill:bundled:healthcheck",
+                name: "healthcheck",
+                path: "/opt/openclaw/skills/healthcheck/SKILL.md",
+                kind: "skill",
+                source: "bundled",
+                editable: false,
+                content: "# Healthcheck"
+              }
+            })
+          );
+        }
+
+        if (url.endsWith("/api/skills/managed%3Areviewer") && !init?.method) {
+          return Promise.resolve(
+            jsonResponse({
+              data: {
+                id: "skill:managed:reviewer",
+                name: "reviewer",
+                path: "/home/ec2-user/.openclaw/skills/reviewer/SKILL.md",
+                kind: "skill",
+                source: "managed",
+                editable: true,
+                content: "# Reviewer"
+              }
+            })
+          );
+        }
+
+        if (url.endsWith("/api/skills/workspace%3Aplanner") && !init?.method) {
+          return Promise.resolve(
+            jsonResponse({
+              data: {
+                id: "skill:workspace:planner",
+                name: "planner",
+                path: "/home/ec2-user/.openclaw/workspace/skills/planner/SKILL.md",
+                kind: "skill",
+                source: "workspace",
+                editable: true,
+                content: "# Planner"
+              }
+            })
+          );
+        }
+
+        return Promise.reject(new Error(`Unhandled request: ${url}`));
+      })
+    );
+
+    await act(async () => {
+      root.render(<SkillsScreen />);
+    });
+
+    await vi.waitFor(() => {
+      expect(container.textContent).toContain("Bundled");
+      expect(container.textContent).toContain("Managed");
+      expect(container.textContent).toContain("Workspace");
+      expect(container.textContent).toContain("healthcheck");
+      expect(container.textContent).toContain("reviewer");
+      expect(container.textContent).toContain("planner");
+      expect(container.querySelector("h1")?.textContent).toBe("Healthcheck");
+      expect(
+        Array.from(container.querySelectorAll("button")).find(
+          (button) => button.textContent === "Edit"
+        )
+      ).toBeUndefined();
+    });
+
+    const reviewerButton = Array.from(container.querySelectorAll("button")).find(
+      (button) => button.textContent?.includes("reviewer")
+    );
+
+    await act(async () => {
+      reviewerButton?.click();
+    });
+
+    await vi.waitFor(() => {
+      expect(container.querySelector("h1")?.textContent).toBe("Reviewer");
+      expect(
+        Array.from(container.querySelectorAll("button")).find(
+          (button) => button.textContent === "Edit"
+        )
+      ).toBeDefined();
+    });
+  });
+
   it("loads a skill, renders its content, and saves edits", async () => {
     const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
       const url = typeof input === "string" ? input : input.toString();
@@ -111,7 +260,9 @@ describe("SkillsScreen", () => {
                 id: "skill:planner",
                 name: "Planner",
                 path: "skills/planner/SKILL.md",
-                kind: "skill"
+                kind: "skill",
+                source: "workspace",
+                editable: true
               }
             ]
           })
@@ -126,6 +277,8 @@ describe("SkillsScreen", () => {
               name: "Planner",
               path: "skills/planner/SKILL.md",
               kind: "skill",
+              source: "workspace",
+              editable: true,
               content: "# Planner"
             }
           })
@@ -140,6 +293,8 @@ describe("SkillsScreen", () => {
               name: "Planner",
               path: "skills/planner/SKILL.md",
               kind: "skill",
+              source: "workspace",
+              editable: true,
               content: "# Updated Planner"
             }
           })
@@ -231,13 +386,17 @@ describe("SkillsScreen", () => {
                 id: "skill:planner",
                 name: "Planner",
                 path: "skills/planner/SKILL.md",
-                kind: "skill"
+                kind: "skill",
+                source: "workspace",
+                editable: true
               },
               {
                 id: "skill:reviewer",
                 name: "Reviewer",
                 path: "skills/reviewer/SKILL.md",
-                kind: "skill"
+                kind: "skill",
+                source: "managed",
+                editable: true
               }
             ]
           })
@@ -252,6 +411,8 @@ describe("SkillsScreen", () => {
               name: "Planner",
               path: "skills/planner/SKILL.md",
               kind: "skill",
+              source: "workspace",
+              editable: true,
               content: "# Planner"
             }
           })
@@ -270,6 +431,8 @@ describe("SkillsScreen", () => {
               name: "Reviewer",
               path: "skills/reviewer/SKILL.md",
               kind: "skill",
+              source: "managed",
+              editable: true,
               content: "# Reviewer"
             }
           })
@@ -381,7 +544,9 @@ describe("SkillsScreen", () => {
                 id: "skill:planner",
                 name: "Planner",
                 path: "skills/planner/SKILL.md",
-                kind: "skill"
+                kind: "skill",
+                source: "workspace",
+                editable: true
               }
             ]
           })
@@ -396,7 +561,9 @@ describe("SkillsScreen", () => {
                 id: "skill:software-dev",
                 name: "software-dev",
                 path: "skills/software-dev/SKILL.md",
-                kind: "skill"
+                kind: "skill",
+                source: "workspace",
+                editable: true
               }
             ]
           })
@@ -411,6 +578,8 @@ describe("SkillsScreen", () => {
               name: "Planner",
               path: "skills/planner/SKILL.md",
               kind: "skill",
+              source: "workspace",
+              editable: true,
               content: "# Planner"
             }
           })
@@ -425,6 +594,8 @@ describe("SkillsScreen", () => {
               name: "software-dev",
               path: "skills/software-dev/SKILL.md",
               kind: "skill",
+              source: "workspace",
+              editable: true,
               content: "# Remote Skill"
             }
           })

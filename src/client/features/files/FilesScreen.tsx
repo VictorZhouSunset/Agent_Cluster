@@ -10,7 +10,6 @@ export function FilesScreen() {
     <NodeScopedDocumentsScreen
       kind="file"
       collectionTitle="Files"
-      editorTitle="File Editor"
       emptyMessage="No files found."
       loadingCollectionMessage="Loading files..."
       loadingDetailMessage="Loading file content..."

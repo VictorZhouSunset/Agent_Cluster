@@ -29,7 +29,7 @@ type SaveState =
 
 type EditableDocumentsScreenProps = {
   collectionTitle: string;
-  editorTitle: string;
+  listDescription?: string;
   emptyMessage: string;
   loadingCollectionMessage: string;
   loadingDetailMessage: string;
@@ -37,6 +37,7 @@ type EditableDocumentsScreenProps = {
   loadCollectionErrorPrefix: string;
   loadDetailErrorPrefix: string;
   saveErrorPrefix: string;
+  groupDocumentsBySource?: boolean;
   listDocuments: () => Promise<EditableDocument[]>;
   readDocument: (documentId: string) => Promise<EditableDocumentContent>;
   saveDocument: (
@@ -45,13 +46,31 @@ type EditableDocumentsScreenProps = {
   ) => Promise<EditableDocumentContent>;
 };
 
+const sourceGroupOrder = ["bundled", "managed", "workspace"] as const;
+
+function getSourceLabel(source: EditableDocument["source"]) {
+  if (source === "bundled") {
+    return "Bundled";
+  }
+
+  if (source === "managed") {
+    return "Managed";
+  }
+
+  if (source === "workspace") {
+    return "Workspace";
+  }
+
+  return "Other";
+}
+
 function getErrorMessage(error: unknown, fallbackMessage: string) {
   return error instanceof Error ? error.message : fallbackMessage;
 }
 
 export function EditableDocumentsScreen({
   collectionTitle,
-  editorTitle,
+  listDescription,
   emptyMessage,
   loadingCollectionMessage,
   loadingDetailMessage,
@@ -59,6 +78,7 @@ export function EditableDocumentsScreen({
   loadCollectionErrorPrefix,
   loadDetailErrorPrefix,
   saveErrorPrefix,
+  groupDocumentsBySource = false,
   listDocuments,
   readDocument,
   saveDocument
@@ -179,6 +199,15 @@ export function EditableDocumentsScreen({
   const documents =
     documentsState.status === "success" ? documentsState.documents : [];
   const isSaving = saveState.status === "saving";
+  const documentGroups = groupDocumentsBySource
+    ? sourceGroupOrder
+        .map((source) => ({
+          id: source,
+          label: getSourceLabel(source),
+          documents: documents.filter((document) => document.source === source)
+        }))
+        .filter((group) => group.documents.length > 0)
+    : [];
 
   return (
     <div className="split-layout">
@@ -187,7 +216,7 @@ export function EditableDocumentsScreen({
           <div>
             <h3 className="panel__title">{collectionTitle}</h3>
             <p className="panel__subtitle">
-              Select an allowlisted document to preview or edit.
+              {listDescription ?? "Select an allowlisted document to preview or edit."}
             </p>
           </div>
         </div>
@@ -203,32 +232,41 @@ export function EditableDocumentsScreen({
           {documentsState.status === "success" ? (
             documents.length > 0 ? (
               <div className="list-scroll">
-                {documents.map((document) => {
-                  const isSelected = document.id === selectedDocumentId;
+                {(groupDocumentsBySource ? documentGroups : [{ id: "all", label: "", documents }]).map(
+                  (group) => (
+                    <section className="list-section" key={group.id}>
+                      {groupDocumentsBySource ? (
+                        <p className="list-section__title">{group.label}</p>
+                      ) : null}
+                      {group.documents.map((document) => {
+                        const isSelected = document.id === selectedDocumentId;
 
-                  return (
-                    <button
-                      key={document.id}
-                      className="list-button"
-                      type="button"
-                      disabled={isSaving}
-                      onClick={() => setSelectedDocumentId(document.id)}
-                      aria-pressed={isSelected}
-                    >
-                      <span className="list-button__title">{document.name}</span>
-                      <div className="list-button__meta">
-                        <span className="list-button__path" data-ui="document-path">
-                          {document.path}
-                        </span>
-                        {document.updatedAt ? (
-                          <span className="list-button__timestamp">
-                            {formatShortDateTime(document.updatedAt)}
-                          </span>
-                        ) : null}
-                      </div>
-                    </button>
-                  );
-                })}
+                        return (
+                          <button
+                            key={document.id}
+                            className="list-button"
+                            type="button"
+                            disabled={isSaving}
+                            onClick={() => setSelectedDocumentId(document.id)}
+                            aria-pressed={isSelected}
+                          >
+                            <span className="list-button__title">{document.name}</span>
+                            <div className="list-button__meta">
+                              <span className="list-button__path" data-ui="document-path">
+                                {document.path}
+                              </span>
+                              {document.updatedAt ? (
+                                <span className="list-button__timestamp">
+                                  {formatShortDateTime(document.updatedAt)}
+                                </span>
+                              ) : null}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </section>
+                  )
+                )}
               </div>
             ) : (
               <p className="empty-copy">{emptyMessage}</p>
@@ -254,6 +292,7 @@ export function EditableDocumentsScreen({
             title={detailState.document.name}
             content={detailState.document.content}
             onSave={handleSave}
+            canEdit={detailState.document.editable !== false}
             isSaving={isSaving}
             statusMessage={
               saveState.status === "success" ? saveState.message : undefined

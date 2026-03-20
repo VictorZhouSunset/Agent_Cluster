@@ -87,6 +87,67 @@ describe("local filesystem provider", () => {
     ]);
   });
 
+  it("includes ready bundled skills as read-only entries alongside managed and workspace skills", async () => {
+    const bundledSkillsDir = join(rootDir, "openclaw-install", "skills");
+    await mkdir(join(bundledSkillsDir, "healthcheck"), { recursive: true });
+    await writeFile(
+      join(bundledSkillsDir, "healthcheck", "SKILL.md"),
+      "# Healthcheck"
+    );
+    await mkdir(join(managedSkillsDir, "reviewer"), { recursive: true });
+    await writeFile(join(managedSkillsDir, "reviewer", "SKILL.md"), "# Reviewer");
+
+    const provider = createLocalFilesystemProvider(rootDir, {
+      bundledSkillCatalog: {
+        async listReadySkills() {
+          return [
+            {
+              name: "healthcheck",
+              path: join(bundledSkillsDir, "healthcheck", "SKILL.md")
+            }
+          ];
+        }
+      }
+    });
+
+    await expect(provider.listDocuments()).resolves.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "skill:bundled:healthcheck",
+          name: "healthcheck",
+          source: "bundled",
+          editable: false,
+          path: join(bundledSkillsDir, "healthcheck", "SKILL.md")
+        }),
+        expect.objectContaining({
+          id: "skill:managed:reviewer",
+          source: "managed",
+          editable: true
+        }),
+        expect.objectContaining({
+          id: "skill:workspace:planner",
+          source: "workspace",
+          editable: true
+        })
+      ])
+    );
+
+    await expect(
+      provider.readDocument("skill:bundled:healthcheck")
+    ).resolves.toEqual(
+      expect.objectContaining({
+        id: "skill:bundled:healthcheck",
+        source: "bundled",
+        editable: false,
+        content: "# Healthcheck"
+      })
+    );
+
+    await expect(
+      provider.writeDocument("skill:bundled:healthcheck", "# Updated")
+    ).rejects.toThrow(/read-only/i);
+  });
+
   it("skips invalid skill directories without dropping valid skills", async () => {
     await mkdir(join(workspaceSkillsDir, "bad name"), { recursive: true });
     await writeFile(join(workspaceSkillsDir, "bad name", "SKILL.md"), "# Invalid");

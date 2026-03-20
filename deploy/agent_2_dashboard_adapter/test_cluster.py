@@ -142,6 +142,43 @@ class DashboardAdapterServiceTests(unittest.TestCase):
             self.assertEqual(result, [{"id": "agents-md", "kind": "file"}])
             list_mock.assert_called_once()
 
+    def test_local_skill_listing_can_include_bundled_ready_skills(self) -> None:
+        with tempfile.TemporaryDirectory() as root_dir:
+            os.makedirs(
+                os.path.join(root_dir, ".openclaw", "workspace", "skills", "planner"),
+                exist_ok=True,
+            )
+            with open(
+                os.path.join(root_dir, ".openclaw", "workspace", "skills", "planner", "SKILL.md"),
+                "w",
+                encoding="utf-8",
+            ) as handle:
+                handle.write("# Planner")
+
+            service = self._create_service(root_dir)
+
+            with patch.object(
+                service,
+                "_list_ready_bundled_skills",
+                return_value=[
+                    {
+                        "id": "skill:bundled:healthcheck",
+                        "name": "healthcheck",
+                        "kind": "skill",
+                        "source": "bundled",
+                        "editable": False,
+                    }
+                ],
+            ):
+                documents = service.list_documents("skill", None)
+
+            self.assertTrue(
+                any(item["id"] == "skill:bundled:healthcheck" for item in documents)
+            )
+            self.assertTrue(
+                any(item["id"] == "skill:workspace:planner" for item in documents)
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

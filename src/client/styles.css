@@ -400,6 +400,20 @@ button {
   gap: 10px;
 }
 
+.list-section {
+  display: grid;
+  gap: 10px;
+}
+
+.list-section__title {
+  margin: 4px 4px 0;
+  color: var(--app-text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
 .list-button {
   width: 100%;
   text-align: left;

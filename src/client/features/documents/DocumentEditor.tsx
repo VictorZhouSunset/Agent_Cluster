@@ -1,5 +1,5 @@
 // input: current markdown content plus save/error state from a parent document workspace
-// output: Gemini-inspired preview-first Markdown editor with header actions and contained controls for files and skills
+// output: Gemini-inspired preview-first Markdown editor with optional read-only mode and contained controls for files and skills
 // pos: reusable dashboard document editor shared by files and skills screens
 // 一旦我被更新，务必更新我的开头注释以及所属文件夹的md。
 import { useEffect, useState } from "react";
@@ -9,6 +9,7 @@ type DocumentEditorProps = {
   title: string;
   content: string;
   onSave: (content: string) => Promise<void>;
+  canEdit?: boolean;
   isSaving?: boolean;
   statusMessage?: string;
   errorMessage?: string;
@@ -18,6 +19,7 @@ export function DocumentEditor({
   title,
   content,
   onSave,
+  canEdit = true,
   isSaving = false,
   statusMessage,
   errorMessage
@@ -49,7 +51,8 @@ export function DocumentEditor({
           </p>
         </div>
         <div className="detail-header__actions">
-          {isEditing ? (
+          {canEdit ? (
+            isEditing ? (
             <>
               <button
                 className="button-primary"
@@ -80,12 +83,15 @@ export function DocumentEditor({
             >
               Edit
             </button>
+            )
+          ) : (
+            <span className="status-badge status-badge--neutral">Read-only</span>
           )}
         </div>
       </div>
 
       <div className="detail-body" style={{ display: "grid", gap: "16px" }}>
-        {isEditing ? (
+        {isEditing && canEdit ? (
           <textarea
             className="document-editor-textarea"
             data-ui="document-editor"
