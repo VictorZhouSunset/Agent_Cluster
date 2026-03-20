@@ -1,5 +1,5 @@
 // input: document editor props and simulated user interactions across preview, edit, and save flows
-// output: assertions for rendered markdown preview, editor mode transitions, save locking, and status feedback
+// output: assertions for rendered markdown preview, header actions, editor mode transitions, save locking, and status feedback
 // pos: focused unit tests for the reusable dashboard document editor component
 // 一旦我被更新，务必更新我的开头注释以及所属文件夹的md。
 // @vitest-environment jsdom
@@ -56,11 +56,12 @@ describe("DocumentEditor", () => {
     expect(container.querySelector("h1")?.textContent).toContain("Agents");
     expect(container.querySelector("strong")?.textContent).toContain("Careful");
 
-    const editButton = Array.from(container.querySelectorAll("button")).find(
-      (button) => button.textContent === "Edit"
-    );
+    const header = container.querySelector('[data-ui="document-header"]');
+    const editButton = header?.querySelector("button");
 
+    expect(header).toBeTruthy();
     expect(editButton).toBeDefined();
+    expect((editButton as HTMLButtonElement).textContent).toBe("Edit");
 
     await act(async () => {
       editButton?.click();

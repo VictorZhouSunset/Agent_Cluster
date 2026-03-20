@@ -1,5 +1,5 @@
 // input: stubbed local adapter state and the local OpenClaw provider factory
-// output: assertions for normalized local health, node, agent, and session reads
+// output: assertions for normalized local health, node, agent, and session reads with current cluster naming
 // pos: provider tests for the local OpenClaw runtime wrapper
 // 一旦我被更新，务必更新我的开头注释以及所属文件夹的md。
 import type { LocalOpenClawAdapter } from "./types";
@@ -30,9 +30,9 @@ describe("local OpenClaw provider", () => {
         startedAt: "2026-03-12T00:00:00.000Z",
         status: "active",
         agentId: "agent-gate",
-        agentName: "Gate Node Agent",
-        nodeId: "gate-node",
-        nodeName: "Gate Node"
+        agentName: "OpenMoose03_CIO Agent",
+        nodeId: "openmoose03-cio",
+        nodeName: "OpenMoose03_CIO"
       }
     ]);
     expect("messages" in sessions[0]).toBe(false);
@@ -45,12 +45,12 @@ describe("local OpenClaw provider", () => {
     expect(agents).toEqual([
       {
         id: "agent-gate",
-        name: "Gate Node Agent",
+        name: "OpenMoose03_CIO Agent",
         status: "idle",
         summary: "Stubbed local agent status.",
         updatedAt: "2026-03-12T00:00:00.000Z",
-        nodeId: "agent-1",
-        nodeName: "Gate Node"
+        nodeId: "openmoose03-cio",
+        nodeName: "OpenMoose03_CIO"
       }
     ]);
   });
@@ -60,8 +60,8 @@ describe("local OpenClaw provider", () => {
 
     await expect(provider.listNodes()).resolves.toEqual([
       {
-        id: "agent-1",
-        name: "Gate Node",
+        id: "openmoose03-cio",
+        name: "OpenMoose03_CIO",
         kind: "gate",
         origin: "local",
         status: "healthy",
@@ -86,9 +86,9 @@ describe("local OpenClaw provider", () => {
       startedAt: "2026-03-12T00:00:00.000Z",
       status: "active",
       agentId: "agent-gate",
-      agentName: "Gate Node Agent",
-      nodeId: "gate-node",
-      nodeName: "Gate Node",
+      agentName: "OpenMoose03_CIO Agent",
+      nodeId: "openmoose03-cio",
+      nodeName: "OpenMoose03_CIO",
       messages: [
         {
           id: "message-local-1",

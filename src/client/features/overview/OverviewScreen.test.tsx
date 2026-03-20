@@ -74,8 +74,8 @@ describe("OverviewScreen", () => {
             jsonResponse({
               data: [
                 {
-                  id: "agent-1",
-                  name: "Gate Node",
+                  id: "openmoose03-cio",
+                  name: "OpenMoose03_CIO",
                   kind: "gate",
                   origin: "local",
                   status: "healthy",
@@ -115,8 +115,8 @@ describe("OverviewScreen", () => {
         jsonResponse({
           data: [
             {
-              id: "agent-1",
-              name: "Planner",
+              id: "openmoose03-cio-agent",
+              name: "OpenMoose03_CIO Agent",
               status: "idle",
               summary: "Ready"
             }
@@ -154,8 +154,8 @@ describe("OverviewScreen", () => {
             jsonResponse({
               data: [
                 {
-                  id: "agent-1",
-                  name: "Planner",
+                  id: "openmoose03-cio-agent",
+                  name: "OpenMoose03_CIO Agent",
                   status: "idle",
                   summary: "Ready"
                 },
@@ -175,8 +175,8 @@ describe("OverviewScreen", () => {
             jsonResponse({
               data: [
                 {
-                  id: "agent-1",
-                  name: "Gate Node",
+                  id: "openmoose03-cio",
+                  name: "OpenMoose03_CIO",
                   kind: "gate",
                   origin: "local",
                   status: "healthy",
@@ -219,9 +219,10 @@ describe("OverviewScreen", () => {
       expect(container.querySelector('[data-ui="overview-agents"]')).toBeTruthy();
       expect(container.textContent).toContain("Cluster Health");
       expect(container.textContent).toContain("All systems normal");
-      expect(container.textContent).toContain("Gate Node");
+      expect(container.textContent).toContain("OpenMoose03_CIO");
+      expect(container.textContent).toContain("openmoose03-cio");
       expect(container.textContent).toContain("OpenMoose02_MD");
-      expect(container.textContent).toContain("Planner");
+      expect(container.textContent).toContain("OpenMoose03_CIO Agent");
       expect(container.textContent).toContain("Responder");
     });
   });

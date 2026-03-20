@@ -1,5 +1,5 @@
 // input: local dashboard runtime provider plus an optional remote adapter client
-// output: cluster-aware health, node, and agent reads that preserve local session ownership
+// output: cluster-aware health, node, and agent reads that preserve local session ownership and current cluster naming
 // pos: aggregation layer between local OpenClaw data and remote cluster summaries
 // 一旦我被更新，务必更新我的开头注释以及所属文件夹的md。
 import type {
@@ -43,8 +43,8 @@ function summarizeNodes(nodes: ClusterNode[]) {
 function getPrimaryLocalNode(localNodes: ClusterNode[]) {
   return (
     localNodes[0] ?? {
-      id: "agent-1",
-      name: "Gate Node",
+      id: "openmoose03-cio",
+      name: "OpenMoose03_CIO",
       kind: "gate",
       origin: "local",
       status: "healthy",

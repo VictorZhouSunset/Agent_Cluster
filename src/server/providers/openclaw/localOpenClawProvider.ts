@@ -1,5 +1,5 @@
 // input: local OpenClaw-facing adapter hooks and fallback stub data
-// output: normalized dashboard health, node, agent, and session data for backend routes
+// output: normalized dashboard health, node, agent, and session data for backend routes using current cluster naming
 // pos: local OpenClaw provider implementation used by the dashboard backend
 // 一旦我被更新，务必更新我的开头注释以及所属文件夹的md。
 import type {
@@ -25,19 +25,19 @@ const stubHealth: DashboardHealth = {
 const stubAgents: AgentStatus[] = [
   {
     id: "agent-gate",
-    name: "Gate Node Agent",
+    name: "OpenMoose03_CIO Agent",
     status: "idle",
     summary: "Stubbed local agent status.",
     updatedAt: "2026-03-12T00:00:00.000Z",
-    nodeId: "agent-1",
-    nodeName: "Gate Node"
+    nodeId: "openmoose03-cio",
+    nodeName: "OpenMoose03_CIO"
   }
 ];
 
 const stubNodes: ClusterNode[] = [
   {
-    id: "agent-1",
-    name: "Gate Node",
+    id: "openmoose03-cio",
+    name: "OpenMoose03_CIO",
     kind: "gate",
     origin: "local",
     status: "healthy",
@@ -58,9 +58,9 @@ const stubSessionSummaries: SessionSummary[] = [
     startedAt: "2026-03-12T00:00:00.000Z",
     status: "active",
     agentId: "agent-gate",
-    agentName: "Gate Node Agent",
-    nodeId: "gate-node",
-    nodeName: "Gate Node"
+    agentName: "OpenMoose03_CIO Agent",
+    nodeId: "openmoose03-cio",
+    nodeName: "OpenMoose03_CIO"
   }
 ];
 

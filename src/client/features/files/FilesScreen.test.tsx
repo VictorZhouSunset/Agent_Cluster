@@ -1,5 +1,5 @@
 // input: mocked file API responses and simulated preview, edit, and save interactions
-// output: assertions for the files workspace error handling, preview mode, and save-lock behavior
+// output: assertions for the files workspace error handling, preview mode, save-lock behavior, and node-scoped list rendering
 // pos: integration tests for the files feature wrapper around the shared document workspace
 // 一旦我被更新，务必更新我的开头注释以及所属文件夹的md。
 // @vitest-environment jsdom
@@ -77,8 +77,8 @@ describe("FilesScreen", () => {
             jsonResponse({
               data: [
                 {
-                  id: "agent-1",
-                  name: "Gate Node",
+                  id: "openmoose03-cio",
+                  name: "OpenMoose03_CIO",
                   kind: "gate",
                   origin: "local",
                   status: "healthy",
@@ -100,7 +100,7 @@ describe("FilesScreen", () => {
                 {
                   id: "agents-md",
                   name: "AGENTS.md",
-                  path: "AGENTS.md",
+                  path: "/home/ec2-user/.openclaw/workspace/AGENTS.md",
                   kind: "file"
                 }
               ]
@@ -114,7 +114,7 @@ describe("FilesScreen", () => {
               data: {
                 id: "agents-md",
                 name: "AGENTS.md",
-                path: "AGENTS.md",
+                path: "/home/ec2-user/.openclaw/workspace/AGENTS.md",
                 kind: "file",
                 content: "# Agents"
               }
@@ -148,8 +148,15 @@ describe("FilesScreen", () => {
       expect(container.querySelector('[data-ui="documents-list"]')).toBeTruthy();
       expect(container.querySelector('[data-ui="documents-detail"]')).toBeTruthy();
       expect(container.textContent).toContain("AGENTS.md");
+      expect(container.textContent).toContain("OpenMoose03_CIO");
       expect(container.querySelector("h1")?.textContent).toBe("Agents");
       expect(container.querySelector("textarea")).toBeNull();
+      expect(
+        container.querySelector('[data-ui="document-path"]')?.textContent
+      ).toContain("/home/ec2-user/.openclaw/workspace/AGENTS.md");
+      expect(
+        container.querySelector('[data-ui="document-path"]')?.className
+      ).toContain("list-button__path");
     });
 
     const editButton = Array.from(container.querySelectorAll("button")).find(
@@ -188,8 +195,8 @@ describe("FilesScreen", () => {
             jsonResponse({
               data: [
                 {
-                  id: "agent-1",
-                  name: "Gate Node",
+                  id: "openmoose03-cio",
+                  name: "OpenMoose03_CIO",
                   kind: "gate",
                   origin: "local",
                   status: "healthy",
@@ -325,8 +332,8 @@ describe("FilesScreen", () => {
           jsonResponse({
             data: [
               {
-                id: "agent-1",
-                name: "Gate Node",
+                id: "openmoose03-cio",
+                name: "OpenMoose03_CIO",
                 kind: "gate",
                 origin: "local",
                 status: "healthy",
@@ -421,7 +428,9 @@ describe("FilesScreen", () => {
     });
 
     await vi.waitFor(() => {
-      expect((container.querySelector("select") as HTMLSelectElement)?.value).toBe("agent-1");
+      expect((container.querySelector("select") as HTMLSelectElement)?.value).toBe(
+        "openmoose03-cio"
+      );
     });
 
     await act(async () => {

@@ -1,5 +1,5 @@
 // input: mocked skill API responses and simulated preview, edit, and save interactions
-// output: assertions for the skills workspace list, rendered preview mode, and save-lock behavior
+// output: assertions for the skills workspace list, rendered preview mode, save-lock behavior, and node-scoped selection
 // pos: integration tests for the skills feature wrapper around the shared document workspace
 // 一旦我被更新，务必更新我的开头注释以及所属文件夹的md。
 // @vitest-environment jsdom
@@ -75,8 +75,8 @@ describe("SkillsScreen", () => {
           jsonResponse({
             data: [
               {
-                id: "agent-1",
-                name: "Gate Node",
+                id: "openmoose03-cio",
+                name: "OpenMoose03_CIO",
                 kind: "gate",
                 origin: "local",
                 status: "healthy",
@@ -160,6 +160,7 @@ describe("SkillsScreen", () => {
       expect(container.querySelector('[data-ui="documents-detail"]')).toBeTruthy();
       expect(container.textContent).toContain("Skills");
       expect(container.textContent).toContain("Node");
+      expect(container.textContent).toContain("OpenMoose03_CIO");
       expect(container.textContent).toContain("Planner");
       expect(container.querySelector("h1")?.textContent).toBe("Planner");
       expect(container.querySelector("textarea")).toBeNull();
@@ -206,8 +207,8 @@ describe("SkillsScreen", () => {
           jsonResponse({
             data: [
               {
-                id: "agent-1",
-                name: "Gate Node",
+                id: "openmoose03-cio",
+                name: "OpenMoose03_CIO",
                 kind: "gate",
                 origin: "local",
                 status: "healthy",
@@ -344,8 +345,8 @@ describe("SkillsScreen", () => {
           jsonResponse({
             data: [
               {
-                id: "agent-1",
-                name: "Gate Node",
+                id: "openmoose03-cio",
+                name: "OpenMoose03_CIO",
                 kind: "gate",
                 origin: "local",
                 status: "healthy",
@@ -440,7 +441,9 @@ describe("SkillsScreen", () => {
     });
 
     await vi.waitFor(() => {
-      expect((container.querySelector("select") as HTMLSelectElement)?.value).toBe("agent-1");
+      expect((container.querySelector("select") as HTMLSelectElement)?.value).toBe(
+        "openmoose03-cio"
+      );
     });
 
     await act(async () => {

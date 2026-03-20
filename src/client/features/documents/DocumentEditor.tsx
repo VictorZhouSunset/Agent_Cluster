@@ -1,5 +1,5 @@
 // input: current markdown content plus save/error state from a parent document workspace
-// output: Gemini-inspired preview-first Markdown editor with contained controls for files and skills
+// output: Gemini-inspired preview-first Markdown editor with header actions and contained controls for files and skills
 // pos: reusable dashboard document editor shared by files and skills screens
 // 一旦我被更新，务必更新我的开头注释以及所属文件夹的md。
 import { useEffect, useState } from "react";
@@ -41,39 +41,14 @@ export function DocumentEditor({
   return (
     <article className="panel detail-shell">
       <div className="detail-header" data-ui="document-header">
-        <div>
+        <div className="detail-header__copy">
           <h2 className="detail-title">{title.replace(/\.md$/i, "")}</h2>
           <p className="panel__subtitle">{title}</p>
+          <p className="panel__subtitle">
+            Preview the rendered markdown, then switch into edit mode when you need to update it.
+          </p>
         </div>
-        <p className="panel__subtitle" style={{ margin: 0 }}>
-          Preview the rendered markdown, then switch into edit mode when you need to update it.
-        </p>
-      </div>
-
-      <div className="detail-body" style={{ display: "grid", gap: "16px" }}>
-        {isEditing ? (
-          <textarea
-            className="document-editor-textarea"
-            data-ui="document-editor"
-            value={draftContent}
-            disabled={isSaving}
-            onChange={(event) => setDraftContent(event.target.value)}
-            rows={18}
-            style={{
-              display: "block",
-              width: "100%",
-              maxWidth: "100%",
-              minWidth: 0,
-              boxSizing: "border-box"
-            }}
-          />
-        ) : (
-          <div className="document-preview markdown-surface" data-ui="document-preview">
-            <ReactMarkdown>{content}</ReactMarkdown>
-          </div>
-        )}
-
-        <div className="toolbar-row">
+        <div className="detail-header__actions">
           {isEditing ? (
             <>
               <button
@@ -106,6 +81,33 @@ export function DocumentEditor({
               Edit
             </button>
           )}
+        </div>
+      </div>
+
+      <div className="detail-body" style={{ display: "grid", gap: "16px" }}>
+        {isEditing ? (
+          <textarea
+            className="document-editor-textarea"
+            data-ui="document-editor"
+            value={draftContent}
+            disabled={isSaving}
+            onChange={(event) => setDraftContent(event.target.value)}
+            rows={18}
+            style={{
+              display: "block",
+              width: "100%",
+              maxWidth: "100%",
+              minWidth: 0,
+              boxSizing: "border-box"
+            }}
+          />
+        ) : (
+          <div className="document-preview markdown-surface" data-ui="document-preview">
+            <ReactMarkdown>{content}</ReactMarkdown>
+          </div>
+        )}
+
+        <div className="toolbar-row">
           {visibleStatusMessage ? (
             <p className="success-copy">{visibleStatusMessage}</p>
           ) : null}

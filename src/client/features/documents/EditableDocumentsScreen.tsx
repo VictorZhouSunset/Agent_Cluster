@@ -217,9 +217,13 @@ export function EditableDocumentsScreen({
                     >
                       <span className="list-button__title">{document.name}</span>
                       <div className="list-button__meta">
-                        <span>{document.path}</span>
+                        <span className="list-button__path" data-ui="document-path">
+                          {document.path}
+                        </span>
                         {document.updatedAt ? (
-                          <span>{formatShortDateTime(document.updatedAt)}</span>
+                          <span className="list-button__timestamp">
+                            {formatShortDateTime(document.updatedAt)}
+                          </span>
                         ) : null}
                       </div>
                     </button>
