@@ -1,5 +1,12 @@
 # AGENTS.md
 
+## Current Stage:
+UI change in the current repo Agent_Cluster and some api debug.
+
+
+
+
+
 ## Environment
 
 - Target OS: Amazon Linux 2023
@@ -122,6 +129,12 @@ After code changes:
 3. run typecheck if present
 4. run build if present
 5. report failures clearly
+
+## Secrets
+The secret of the Dashboard adapter is: "YOUR_REAL_DASHBOARD_SECRET_HERE"
+It's ok in the dev section to just speak it out loud. I will change the secret later in the production.
+The secret of the 9001 port:
+"X-Agent-Secret: openmoose-secret-cluster001"
 
 ## References
 
