@@ -1,7 +1,7 @@
 # client
 React frontend for the Gate dashboard.
 Owns screen composition, navigation, and browser-side data access.
-Also owns the shared dark visual system used across all dashboard sections.
+Also owns the shared dark Grotesque visual system used across all dashboard sections.
 Feature folders hold the main user-facing workflows.
 一旦我所属的文件夹有所变化，请更新我。
 
