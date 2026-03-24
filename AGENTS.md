@@ -1,8 +1,11 @@
 # AGENTS.md
 
 ## Current Stage:
-UI change in the current repo Agent_Cluster and some api debug.
 
+两条线：
+1. D:\2025-27_CS_AI\Projects\Openmoose_Frontend 项目是我们的官网前后端（数据库在Supabase），有些东西可能需要改动
+
+2. We are also trying to do next: 付费用户在sub-dashboard页面点击“建立集群”，就可以自动在AWS上建立起一个（现阶段就一个）EC2，t3-small，然后配置好Amazon Linux，openclaw，以及部署D:\2025-27_CS_AI\Projects\Agent_Cluster （当前） 项目里的cluster-dashboard（那就相当于只部署cio的，不部署md的），然后在sub-dashboard页面可以看见进入集群的按钮了
 
 
 
