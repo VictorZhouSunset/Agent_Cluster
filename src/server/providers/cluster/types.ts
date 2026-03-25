@@ -35,4 +35,5 @@ export interface RemoteDashboardAdapterClient {
 export interface RemoteDashboardAdapterClientOptions {
   baseUrl: string;
   secret: string;
+  timeoutMs?: number;
 }

@@ -284,6 +284,7 @@ Type=simple
 User=ubuntu
 WorkingDirectory=/opt/Agent_Cluster
 Environment=PORT=3000
+Environment=GATE_CLUSTER_TOPOLOGY=tier0
 ExecStart=/usr/bin/env pnpm start
 Restart=always
 RestartSec=5
@@ -431,6 +432,16 @@ On `cio` / `agent_1`, point the dashboard backend at that adapter with:
 export GATE_CLUSTER_ADAPTER_BASE_URL=http://<agent-2-private-ip>:9011
 export GATE_CLUSTER_ADAPTER_SECRET=<same dashboard adapter secret configured on agent_2>
 ```
+
+For Tier 0 single-node deployments, do not configure those adapter variables.
+Set this instead:
+
+```bash
+export GATE_CLUSTER_TOPOLOGY=tier0
+```
+
+In Tier 0 mode the dashboard only expects the local `cio` node and `/api/health`
+does not wait on `md`.
 
 On `md` / `agent_2`, read the adapter-specific setup instructions in:
 

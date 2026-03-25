@@ -1,5 +1,5 @@
-// input: remote adapter base URL, shared secret, and node-aware dashboard document requests
-// output: typed HTTP client calls for remote node summaries, agent data, and document operations
+// input: remote adapter base URL, shared secret, timeout settings, and node-aware dashboard document requests
+// output: typed HTTP client calls for remote node summaries, agent data, and document operations with bounded wait time
 // pos: cluster adapter client used by the agent_1 dashboard backend
 // 一旦我被更新，务必更新我的开头注释以及所属文件夹的md。
 import type {
@@ -39,39 +39,55 @@ function withDocumentPath(path: string, documentId: string, nodeId: string) {
 async function requestJson<T>(
   baseUrl: string,
   secret: string,
+  timeoutMs: number,
   path: string,
   init?: RequestInit
 ): Promise<T> {
-  const response = await fetch(new URL(path, baseUrl), {
-    ...init,
-    headers: {
-      Accept: "application/json",
-      "X-Dashboard-Secret": secret,
-      ...(init?.headers ?? {})
+  const controller = new AbortController();
+  const timeoutHandle = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(new URL(path, baseUrl), {
+      ...init,
+      signal: controller.signal,
+      headers: {
+        Accept: "application/json",
+        "X-Dashboard-Secret": secret,
+        ...(init?.headers ?? {})
+      }
+    });
+
+    const payload = (await response.json()) as AdapterSuccess<T> & AdapterFailure;
+
+    if (!response.ok || !("data" in payload)) {
+      throw new Error(
+        payload.error?.message ?? `Remote adapter request failed with status ${response.status}.`
+      );
     }
-  });
 
-  const payload = (await response.json()) as AdapterSuccess<T> & AdapterFailure;
+    return payload.data;
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new Error(`Remote adapter request timed out after ${timeoutMs}ms.`);
+    }
 
-  if (!response.ok || !("data" in payload)) {
-    throw new Error(
-      payload.error?.message ?? `Remote adapter request failed with status ${response.status}.`
-    );
+    throw error;
+  } finally {
+    clearTimeout(timeoutHandle);
   }
-
-  return payload.data;
 }
 
 export function createRemoteDashboardAdapterClient({
   baseUrl,
-  secret
+  secret,
+  timeoutMs = 1500
 }: RemoteDashboardAdapterClientOptions): RemoteDashboardAdapterClient {
   return {
     async listNodes(): Promise<ClusterNode[]> {
-      return requestJson<ClusterNode[]>(baseUrl, secret, "/dashboard/nodes");
+      return requestJson<ClusterNode[]>(baseUrl, secret, timeoutMs, "/dashboard/nodes");
     },
     async listAgents(): Promise<AgentStatus[]> {
-      return requestJson<AgentStatus[]>(baseUrl, secret, "/dashboard/agents");
+      return requestJson<AgentStatus[]>(baseUrl, secret, timeoutMs, "/dashboard/agents");
     },
     async listDocuments({
       kind,
@@ -80,6 +96,7 @@ export function createRemoteDashboardAdapterClient({
       return requestJson<EditableDocument[]>(
         baseUrl,
         secret,
+        timeoutMs,
         withNodeQuery(`/dashboard/documents/${kind}`, nodeId)
       );
     },
@@ -91,6 +108,7 @@ export function createRemoteDashboardAdapterClient({
       return requestJson<EditableDocumentContent>(
         baseUrl,
         secret,
+        timeoutMs,
         withDocumentPath(`/dashboard/documents/${kind}`, documentId, nodeId)
       );
     },
@@ -103,6 +121,7 @@ export function createRemoteDashboardAdapterClient({
       return requestJson<EditableDocumentContent>(
         baseUrl,
         secret,
+        timeoutMs,
         withDocumentPath(`/dashboard/documents/${kind}`, documentId, nodeId),
         {
           method: "PUT",

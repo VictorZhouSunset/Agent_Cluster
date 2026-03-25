@@ -1,5 +1,5 @@
-// input: process environment, fallback filesystem root, and local provider factories
-// output: configured dashboard providers with optional remote adapter composition
+// input: process environment, fallback filesystem root, topology flags, and local provider factories
+// output: configured dashboard providers with topology-aware optional remote adapter composition
 // pos: provider bootstrap helper for server startup and tests
 // 一旦我被更新，务必更新我的开头注释以及所属文件夹的md。
 import { createLocalFilesystemProvider } from "../filesystem/localFilesystemProvider.js";
@@ -11,8 +11,10 @@ import { createClusterOpenClawProvider } from "./clusterOpenClawProvider.js";
 import { createRemoteDashboardAdapterClient } from "./remoteDashboardAdapterClient.js";
 
 export interface ClusterEnvironment {
+  GATE_CLUSTER_TOPOLOGY?: string;
   GATE_CLUSTER_ADAPTER_BASE_URL?: string;
   GATE_CLUSTER_ADAPTER_SECRET?: string;
+  GATE_CLUSTER_ADAPTER_TIMEOUT_MS?: string;
   GATE_OPENCLAW_BASE_DIR?: string;
   GATE_OPENCLAW_AGENT_ID?: string;
   HOME?: string;
@@ -24,13 +26,18 @@ export interface ConfiguredProviders {
 }
 
 function createRemoteAdapterClient(env: ClusterEnvironment) {
+  if (env.GATE_CLUSTER_TOPOLOGY === "tier0") {
+    return undefined;
+  }
+
   if (!env.GATE_CLUSTER_ADAPTER_BASE_URL || !env.GATE_CLUSTER_ADAPTER_SECRET) {
     return undefined;
   }
 
   return createRemoteDashboardAdapterClient({
     baseUrl: env.GATE_CLUSTER_ADAPTER_BASE_URL,
-    secret: env.GATE_CLUSTER_ADAPTER_SECRET
+    secret: env.GATE_CLUSTER_ADAPTER_SECRET,
+    timeoutMs: Number(env.GATE_CLUSTER_ADAPTER_TIMEOUT_MS || 1500)
   });
 }
 

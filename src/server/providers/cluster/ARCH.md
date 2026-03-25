@@ -1,7 +1,7 @@
 # cluster
 Cluster-aware provider helpers for the agent_1 dashboard backend.
 Keeps remote adapter access separate from local provider logic.
-Owns composition, remote HTTP calls, and local/remote document routing.
+Owns topology-aware composition, bounded remote HTTP calls, and local/remote document routing.
 一旦我所属的文件夹有所变化，请更新我。
 
 | file name | position | function |

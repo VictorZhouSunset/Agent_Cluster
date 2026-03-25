@@ -5,8 +5,13 @@
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { createConfiguredProviders } from "./createConfiguredProviders";
+
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
 describe("configured providers", () => {
   it("wires the local OpenClaw session store into the cluster provider", async () => {
@@ -62,6 +67,38 @@ describe("configured providers", () => {
           ]
         })
       );
+    } finally {
+      await rm(homeDir, { recursive: true, force: true });
+    }
+  });
+
+  it("keeps Tier 0 single-node health local even when remote adapter env is present", async () => {
+    const homeDir = await mkdtemp(join(tmpdir(), "gate-dashboard-tier0-providers-"));
+    const fetchSpy = vi.fn(async () => {
+      throw new Error("remote adapter should not be contacted in tier0");
+    });
+    vi.stubGlobal("fetch", fetchSpy);
+
+    try {
+      const providers = createConfiguredProviders(homeDir, {
+        HOME: homeDir,
+        GATE_CLUSTER_TOPOLOGY: "tier0",
+        GATE_CLUSTER_ADAPTER_BASE_URL: "http://127.0.0.1:9011",
+        GATE_CLUSTER_ADAPTER_SECRET: "test-secret"
+      });
+
+      await expect(providers.openClawProvider.getHealth()).resolves.toEqual(
+        expect.objectContaining({
+          status: "healthy"
+        })
+      );
+      await expect(providers.openClawProvider.listNodes()).resolves.toEqual([
+        expect.objectContaining({
+          id: "openmoose03-cio",
+          origin: "local"
+        })
+      ]);
+      expect(fetchSpy).not.toHaveBeenCalled();
     } finally {
       await rm(homeDir, { recursive: true, force: true });
     }
