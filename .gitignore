@@ -6,3 +6,4 @@ tmp_docs/
 __pycache__/
 *.pyc
 .env
+*.pem
