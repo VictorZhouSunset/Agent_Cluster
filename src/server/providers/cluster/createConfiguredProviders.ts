@@ -25,8 +25,20 @@ export interface ConfiguredProviders {
   openClawProvider: OpenClawProvider;
 }
 
+function normalizeTopology(topology?: string) {
+  if (topology === "tier0-single-node") {
+    return "tier0";
+  }
+
+  if (topology === "internal-three-node") {
+    return "internal";
+  }
+
+  return topology;
+}
+
 function createRemoteAdapterClient(env: ClusterEnvironment) {
-  if (env.GATE_CLUSTER_TOPOLOGY === "tier0") {
+  if (normalizeTopology(env.GATE_CLUSTER_TOPOLOGY) === "tier0") {
     return undefined;
   }
 

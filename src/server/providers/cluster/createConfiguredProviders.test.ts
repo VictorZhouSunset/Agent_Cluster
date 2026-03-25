@@ -103,4 +103,77 @@ describe("configured providers", () => {
       await rm(homeDir, { recursive: true, force: true });
     }
   });
+
+  it("treats the normalized tier0-single-node topology as local-only", async () => {
+    const homeDir = await mkdtemp(join(tmpdir(), "gate-dashboard-tier0-normalized-"));
+    const fetchSpy = vi.fn(async () => {
+      throw new Error("remote adapter should not be contacted in tier0-single-node");
+    });
+    vi.stubGlobal("fetch", fetchSpy);
+
+    try {
+      const providers = createConfiguredProviders(homeDir, {
+        HOME: homeDir,
+        GATE_CLUSTER_TOPOLOGY: "tier0-single-node",
+        GATE_CLUSTER_ADAPTER_BASE_URL: "http://127.0.0.1:9011",
+        GATE_CLUSTER_ADAPTER_SECRET: "test-secret"
+      });
+
+      await expect(providers.openClawProvider.listNodes()).resolves.toEqual([
+        expect.objectContaining({
+          id: "openmoose03-cio",
+          origin: "local"
+        })
+      ]);
+      expect(fetchSpy).not.toHaveBeenCalled();
+    } finally {
+      await rm(homeDir, { recursive: true, force: true });
+    }
+  });
+
+  it("keeps remote adapter enabled for the internal-three-node topology", async () => {
+    const homeDir = await mkdtemp(join(tmpdir(), "gate-dashboard-internal-topology-"));
+    const fetchSpy = vi.fn(async () => ({
+      ok: true,
+      async json() {
+        return {
+          data: [
+            {
+              id: "openmoose03-md",
+              name: "OpenMoose03_MD",
+              kind: "md",
+              origin: "remote",
+              status: "offline",
+              checkedAt: "2026-03-25T00:00:00.000Z",
+              summary: "Remote adapter reported md offline.",
+              supportsSessions: false,
+              supportsSkills: true,
+              supportsFiles: true,
+              supportsWrites: false
+            }
+          ]
+        };
+      }
+    }));
+    vi.stubGlobal("fetch", fetchSpy);
+
+    try {
+      const providers = createConfiguredProviders(homeDir, {
+        HOME: homeDir,
+        GATE_CLUSTER_TOPOLOGY: "internal-three-node",
+        GATE_CLUSTER_ADAPTER_BASE_URL: "http://127.0.0.1:9011",
+        GATE_CLUSTER_ADAPTER_SECRET: "test-secret"
+      });
+
+      await expect(providers.openClawProvider.listNodes()).resolves.toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ id: "openmoose03-cio", origin: "local" }),
+          expect.objectContaining({ id: "openmoose03-md", origin: "remote", status: "offline" })
+        ])
+      );
+      expect(fetchSpy).toHaveBeenCalled();
+    } finally {
+      await rm(homeDir, { recursive: true, force: true });
+    }
+  });
 });
