@@ -2,6 +2,8 @@
 // output: configured dashboard providers with topology-aware optional remote adapter composition
 // pos: provider bootstrap helper for server startup and tests
 // 一旦我被更新，务必更新我的开头注释以及所属文件夹的md。
+import { createLocalChannelConfigService } from "../channels/localChannelConfigService.js";
+import type { ChannelConfigService } from "../channels/types.js";
 import { createLocalFilesystemProvider } from "../filesystem/localFilesystemProvider.js";
 import type { FilesystemProvider } from "../filesystem/types.js";
 import { createLocalOpenClawProvider } from "../openclaw/localOpenClawProvider.js";
@@ -15,12 +17,16 @@ export interface ClusterEnvironment {
   GATE_CLUSTER_ADAPTER_BASE_URL?: string;
   GATE_CLUSTER_ADAPTER_SECRET?: string;
   GATE_CLUSTER_ADAPTER_TIMEOUT_MS?: string;
+  GATE_INTERNAL_CONFIG_SECRET?: string;
   GATE_OPENCLAW_BASE_DIR?: string;
+  GATE_OPENCLAW_CONFIG_PATH?: string;
+  GATE_OPENCLAW_RELOAD_COMMAND?: string;
   GATE_OPENCLAW_AGENT_ID?: string;
   HOME?: string;
 }
 
 export interface ConfiguredProviders {
+  channelConfigService: ChannelConfigService;
   filesystemProvider: FilesystemProvider;
   openClawProvider: OpenClawProvider;
 }
@@ -66,6 +72,11 @@ export function createConfiguredProviders(
   });
 
   return {
+    channelConfigService: createLocalChannelConfigService({
+      homeDir: openClawHomeDir,
+      configPath: env.GATE_OPENCLAW_CONFIG_PATH,
+      reloadCommand: env.GATE_OPENCLAW_RELOAD_COMMAND
+    }),
     filesystemProvider: createClusterFilesystemProvider({
       localProvider: localFilesystemProvider,
       remoteAdapterClient

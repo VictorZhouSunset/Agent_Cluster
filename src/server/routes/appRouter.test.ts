@@ -7,6 +7,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import request from "supertest";
 import { beforeEach, describe, expect, it } from "vitest";
+import type { ChannelConfigService } from "../providers/channels/types.js";
 import type { FilesystemProvider } from "../providers/filesystem/types.js";
 import { createLocalFilesystemProvider } from "../providers/filesystem/localFilesystemProvider.js";
 import type { OpenClawProvider } from "../providers/openclaw/types.js";
@@ -15,6 +16,7 @@ import { createApp } from "../app";
 describe("app router", () => {
   let rootDir: string;
   let clientDir: string;
+  let channelConfigService: ChannelConfigService;
   let filesystemProvider: FilesystemProvider;
   let openClawProvider: OpenClawProvider;
   let workspaceDir: string;
@@ -35,6 +37,24 @@ describe("app router", () => {
     await writeFile(join(workspaceSkillsDir, "planner", "SKILL.md"), "# Planner");
 
     filesystemProvider = createLocalFilesystemProvider(rootDir);
+    channelConfigService = {
+      async applyTelegramChannel({ desiredVersion }) {
+        return {
+          channelType: "telegram",
+          applyStatus: "connected",
+          desiredVersion: desiredVersion ?? 1,
+          appliedVersion: desiredVersion ?? 1,
+          configPath: join(rootDir, ".openclaw", "openclaw.json")
+        };
+      },
+      async clearTelegramChannel() {
+        return {
+          channelType: "telegram",
+          applyStatus: "not_connected",
+          configPath: join(rootDir, ".openclaw", "openclaw.json")
+        };
+      }
+    };
     openClawProvider = {
       async getHealth() {
         return {
@@ -109,6 +129,11 @@ describe("app router", () => {
   }) {
     return createApp({
       clientDir,
+      channelConfigService,
+      env: {
+        GATE_INTERNAL_CONFIG_SECRET: "internal-secret",
+        HOME: rootDir
+      },
       filesystemProvider: overrides?.filesystemProvider ?? filesystemProvider,
       openClawProvider: overrides?.openClawProvider ?? openClawProvider
     });
@@ -384,5 +409,53 @@ describe("app router", () => {
 
     expect(response.status).toBe(200);
     expect(response.text).toContain("Dashboard Shell");
+  });
+
+  it("rejects internal Telegram apply requests without the shared secret", async () => {
+    const response = await request(createRouteApp())
+      .post("/api/internal/channels/telegram/apply")
+      .send({ botToken: "telegram-token-123456", desiredVersion: 2 });
+
+    expect(response.status).toBe(403);
+    expect(response.body).toEqual({
+      error: {
+        code: "forbidden",
+        message: "Invalid internal channel configuration secret."
+      }
+    });
+  });
+
+  it("applies Telegram config through the internal channel route", async () => {
+    const response = await request(createRouteApp())
+      .post("/api/internal/channels/telegram/apply")
+      .set("X-OpenMoose-Internal-Secret", "internal-secret")
+      .send({ botToken: "telegram-token-123456", desiredVersion: 4 });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      data: {
+        channelType: "telegram",
+        applyStatus: "connected",
+        desiredVersion: 4,
+        appliedVersion: 4,
+        configPath: join(rootDir, ".openclaw", "openclaw.json")
+      }
+    });
+  });
+
+  it("clears Telegram config through the internal channel route", async () => {
+    const response = await request(createRouteApp())
+      .post("/api/internal/channels/telegram/clear")
+      .set("X-OpenMoose-Internal-Secret", "internal-secret")
+      .send({});
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      data: {
+        channelType: "telegram",
+        applyStatus: "not_connected",
+        configPath: join(rootDir, ".openclaw", "openclaw.json")
+      }
+    });
   });
 });

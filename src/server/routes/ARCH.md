@@ -11,5 +11,6 @@ Keeps route concerns separate from provider logic.
 | appRouter.test.ts | router test | verifies API responses and route-level error handling |
 | documents.ts | endpoint handler | serves editable file and skill list/detail/save flows |
 | health.ts | endpoint handler | serves normalized dashboard health data |
+| internalChannels.ts | endpoint handlers | serves internal-only Telegram config apply and clear routes |
 | nodes.ts | endpoint handler | serves cluster node inventory for overview and document scoping |
 | sessions.ts | endpoint handlers | serves session collection and session detail responses |

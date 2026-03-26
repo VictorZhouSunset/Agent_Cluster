@@ -3,6 +3,7 @@
 // pos: central API router for the dashboard backend
 // 一旦我被更新，务必更新我的开头注释以及所属文件夹的md。
 import type { IncomingMessage, ServerResponse } from "node:http";
+import type { ChannelConfigService } from "../providers/channels/types.js";
 import type { FilesystemProvider } from "../providers/filesystem/types.js";
 import { ReadOnlyDocumentError } from "../providers/filesystem/localFilesystemProvider.js";
 import type { OpenClawProvider } from "../providers/openclaw/types.js";
@@ -10,11 +11,14 @@ import { handleAgentsRoute } from "./agents.js";
 import { handleDocumentsRoute } from "./documents.js";
 import { InvalidJsonBodyError } from "./documents.js";
 import { handleHealthRoute } from "./health.js";
+import { handleInternalTelegramApplyRoute, handleInternalTelegramClearRoute } from "./internalChannels.js";
 import { handleNodesRoute } from "./nodes.js";
 import { handleSessionDetailRoute, handleSessionsCollectionRoute } from "./sessions.js";
 
 export interface AppRouterDependencies {
+  channelConfigService: ChannelConfigService;
   filesystemProvider: FilesystemProvider;
+  internalConfigSecret: string;
   openClawProvider: OpenClawProvider;
 }
 
@@ -96,6 +100,40 @@ export function createAppRouter(dependencies: AppRouterDependencies) {
 
       if (segments.length === 3 && segments[1] === "sessions" && request.method === "GET") {
         await handleSessionDetailRoute(response, dependencies.openClawProvider, segments[2]);
+        return true;
+      }
+
+      if (
+        segments.length === 5 &&
+        segments[1] === "internal" &&
+        segments[2] === "channels" &&
+        segments[3] === "telegram" &&
+        segments[4] === "apply" &&
+        request.method === "POST"
+      ) {
+        await handleInternalTelegramApplyRoute(
+          request,
+          response,
+          dependencies.channelConfigService,
+          dependencies.internalConfigSecret
+        );
+        return true;
+      }
+
+      if (
+        segments.length === 5 &&
+        segments[1] === "internal" &&
+        segments[2] === "channels" &&
+        segments[3] === "telegram" &&
+        segments[4] === "clear" &&
+        request.method === "POST"
+      ) {
+        await handleInternalTelegramClearRoute(
+          request,
+          response,
+          dependencies.channelConfigService,
+          dependencies.internalConfigSecret
+        );
         return true;
       }
 

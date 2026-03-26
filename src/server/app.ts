@@ -7,6 +7,7 @@ import { stat } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, extname, join, normalize } from "node:path";
 import type { IncomingMessage, ServerResponse } from "node:http";
+import type { ChannelConfigService } from "./providers/channels/types.js";
 import type { FilesystemProvider } from "./providers/filesystem/types.js";
 import type { OpenClawProvider } from "./providers/openclaw/types.js";
 import { createConfiguredProviders, type ClusterEnvironment } from "./providers/cluster/createConfiguredProviders.js";
@@ -63,21 +64,23 @@ export function resolveDefaultClientDir(serverModulePath: string) {
 
 export function createApp(options?: {
   clientDir?: string;
+  channelConfigService?: ChannelConfigService;
   filesystemProvider?: FilesystemProvider;
   openClawProvider?: OpenClawProvider;
   env?: ClusterEnvironment;
 }) {
   const clientDir = options?.clientDir ?? resolveDefaultClientDir(fileURLToPath(import.meta.url));
-  const configuredProviders =
-    options?.filesystemProvider && options?.openClawProvider
-      ? {
-          filesystemProvider: options.filesystemProvider,
-          openClawProvider: options.openClawProvider
-        }
-      : createConfiguredProviders(process.cwd(), options?.env ?? process.env);
+  const defaultProviders = createConfiguredProviders(process.cwd(), options?.env ?? process.env);
+  const configuredProviders = {
+    channelConfigService: options?.channelConfigService ?? defaultProviders.channelConfigService,
+    filesystemProvider: options?.filesystemProvider ?? defaultProviders.filesystemProvider,
+    openClawProvider: options?.openClawProvider ?? defaultProviders.openClawProvider
+  };
   const apiRouter = createAppRouter({
-    filesystemProvider: options?.filesystemProvider ?? configuredProviders.filesystemProvider,
-    openClawProvider: options?.openClawProvider ?? configuredProviders.openClawProvider
+    channelConfigService: configuredProviders.channelConfigService,
+    filesystemProvider: configuredProviders.filesystemProvider,
+    internalConfigSecret: options?.env?.GATE_INTERNAL_CONFIG_SECRET ?? process.env.GATE_INTERNAL_CONFIG_SECRET ?? "",
+    openClawProvider: configuredProviders.openClawProvider
   });
 
   return async (request: IncomingMessage, response: ServerResponse) => {
