@@ -38,6 +38,38 @@ describe("app router", () => {
 
     filesystemProvider = createLocalFilesystemProvider(rootDir);
     channelConfigService = {
+      async getOpenClawConfig() {
+        return {
+          config: {
+            channels: {
+              telegram: {
+                botToken: "telegram-token-123456"
+              }
+            }
+          },
+          configPath: join(rootDir, ".openclaw", "openclaw.json")
+        };
+      },
+      async replaceOpenClawConfig({ config }) {
+        return {
+          config,
+          configPath: join(rootDir, ".openclaw", "openclaw.json"),
+          reloadedAt: "2026-03-12T00:00:00.000Z"
+        };
+      },
+      async patchOpenClawConfig({ patch }) {
+        return {
+          config: patch,
+          configPath: join(rootDir, ".openclaw", "openclaw.json"),
+          reloadedAt: "2026-03-12T00:00:00.000Z"
+        };
+      },
+      async reloadOpenClawConfig() {
+        return {
+          configPath: join(rootDir, ".openclaw", "openclaw.json"),
+          reloadedAt: "2026-03-12T00:00:00.000Z"
+        };
+      },
       async applyTelegramChannel({ desiredVersion }) {
         return {
           channelType: "telegram",
@@ -455,6 +487,97 @@ describe("app router", () => {
         channelType: "telegram",
         applyStatus: "not_connected",
         configPath: join(rootDir, ".openclaw", "openclaw.json")
+      }
+    });
+  });
+
+  it("reads the full OpenClaw config through the internal config route", async () => {
+    const response = await request(createRouteApp())
+      .get("/api/internal/openclaw-config")
+      .set("X-OpenMoose-Internal-Secret", "internal-secret");
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      data: {
+        config: {
+          channels: {
+            telegram: {
+              botToken: "telegram-token-123456"
+            }
+          }
+        },
+        configPath: join(rootDir, ".openclaw", "openclaw.json")
+      }
+    });
+  });
+
+  it("replaces the full OpenClaw config through the internal config route", async () => {
+    const response = await request(createRouteApp())
+      .put("/api/internal/openclaw-config")
+      .set("X-OpenMoose-Internal-Secret", "internal-secret")
+      .send({
+        config: {
+          channels: {
+            lark: {
+              appId: "lark-app-id"
+            }
+          }
+        }
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      data: {
+        config: {
+          channels: {
+            lark: {
+              appId: "lark-app-id"
+            }
+          }
+        },
+        configPath: join(rootDir, ".openclaw", "openclaw.json"),
+        reloadedAt: "2026-03-12T00:00:00.000Z"
+      }
+    });
+  });
+
+  it("patches the OpenClaw config through the internal config route", async () => {
+    const response = await request(createRouteApp())
+      .patch("/api/internal/openclaw-config")
+      .set("X-OpenMoose-Internal-Secret", "internal-secret")
+      .send({
+        patch: {
+          channels: {
+            telegram: null
+          }
+        }
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      data: {
+        config: {
+          channels: {
+            telegram: null
+          }
+        },
+        configPath: join(rootDir, ".openclaw", "openclaw.json"),
+        reloadedAt: "2026-03-12T00:00:00.000Z"
+      }
+    });
+  });
+
+  it("reloads OpenClaw config through the internal config route", async () => {
+    const response = await request(createRouteApp())
+      .post("/api/internal/openclaw-config/reload")
+      .set("X-OpenMoose-Internal-Secret", "internal-secret")
+      .send({});
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      data: {
+        configPath: join(rootDir, ".openclaw", "openclaw.json"),
+        reloadedAt: "2026-03-12T00:00:00.000Z"
       }
     });
   });

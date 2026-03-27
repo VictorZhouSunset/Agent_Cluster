@@ -1,7 +1,33 @@
-// input: channel tokens plus desired version and local runtime apply intent
-// output: structured apply and clear results for internal dashboard orchestration
-// pos: contract for local conversation-channel configuration services
+// input: OpenClaw config documents, merge patches, reload intents, and Telegram compatibility writes
+// output: structured local config read/write/reload results for internal dashboard orchestration
+// pos: contract for local OpenClaw config services
 // 一旦我被更新，务必更新我的开头注释以及所属文件夹的md。
+export type OpenClawConfigDocument = Record<string, unknown>;
+
+export interface GetOpenClawConfigResult {
+  config: OpenClawConfigDocument;
+  configPath: string;
+}
+
+export interface ReplaceOpenClawConfigInput {
+  config: OpenClawConfigDocument;
+}
+
+export interface PatchOpenClawConfigInput {
+  patch: OpenClawConfigDocument;
+}
+
+export interface UpdateOpenClawConfigResult {
+  config: OpenClawConfigDocument;
+  configPath: string;
+  reloadedAt: string;
+}
+
+export interface ReloadOpenClawConfigResult {
+  configPath: string;
+  reloadedAt: string;
+}
+
 export interface ApplyTelegramChannelInput {
   botToken: string;
   desiredVersion?: number;
@@ -22,6 +48,10 @@ export interface ClearTelegramChannelResult {
 }
 
 export interface ChannelConfigService {
+  getOpenClawConfig(): Promise<GetOpenClawConfigResult>;
+  replaceOpenClawConfig(input: ReplaceOpenClawConfigInput): Promise<UpdateOpenClawConfigResult>;
+  patchOpenClawConfig(input: PatchOpenClawConfigInput): Promise<UpdateOpenClawConfigResult>;
+  reloadOpenClawConfig(): Promise<ReloadOpenClawConfigResult>;
   applyTelegramChannel(input: ApplyTelegramChannelInput): Promise<ApplyTelegramChannelResult>;
   clearTelegramChannel(): Promise<ClearTelegramChannelResult>;
 }

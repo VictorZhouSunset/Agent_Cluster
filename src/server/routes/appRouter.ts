@@ -11,7 +11,14 @@ import { handleAgentsRoute } from "./agents.js";
 import { handleDocumentsRoute } from "./documents.js";
 import { InvalidJsonBodyError } from "./documents.js";
 import { handleHealthRoute } from "./health.js";
-import { handleInternalTelegramApplyRoute, handleInternalTelegramClearRoute } from "./internalChannels.js";
+import {
+  handleInternalOpenClawConfigGetRoute,
+  handleInternalOpenClawConfigPatchRoute,
+  handleInternalOpenClawConfigPutRoute,
+  handleInternalOpenClawConfigReloadRoute,
+  handleInternalTelegramApplyRoute,
+  handleInternalTelegramClearRoute
+} from "./internalChannels.js";
 import { handleNodesRoute } from "./nodes.js";
 import { handleSessionDetailRoute, handleSessionsCollectionRoute } from "./sessions.js";
 
@@ -100,6 +107,67 @@ export function createAppRouter(dependencies: AppRouterDependencies) {
 
       if (segments.length === 3 && segments[1] === "sessions" && request.method === "GET") {
         await handleSessionDetailRoute(response, dependencies.openClawProvider, segments[2]);
+        return true;
+      }
+
+      if (
+        segments.length === 3 &&
+        segments[1] === "internal" &&
+        segments[2] === "openclaw-config" &&
+        request.method === "GET"
+      ) {
+        await handleInternalOpenClawConfigGetRoute(
+          request,
+          response,
+          dependencies.channelConfigService,
+          dependencies.internalConfigSecret
+        );
+        return true;
+      }
+
+      if (
+        segments.length === 3 &&
+        segments[1] === "internal" &&
+        segments[2] === "openclaw-config" &&
+        request.method === "PUT"
+      ) {
+        await handleInternalOpenClawConfigPutRoute(
+          request,
+          response,
+          dependencies.channelConfigService,
+          dependencies.internalConfigSecret
+        );
+        return true;
+      }
+
+      if (
+        segments.length === 3 &&
+        segments[1] === "internal" &&
+        segments[2] === "openclaw-config" &&
+        request.method === "PATCH"
+      ) {
+        await handleInternalOpenClawConfigPatchRoute(
+          request,
+          response,
+          dependencies.channelConfigService,
+          dependencies.internalConfigSecret
+        );
+        return true;
+      }
+
+      if (
+        segments.length === 4 &&
+        segments[1] === "internal" &&
+        segments[2] === "openclaw-config" &&
+        segments[3] === "reload" &&
+        request.method === "POST"
+      ) {
+        await handleInternalOpenClawConfigReloadRoute(
+          request,
+          response,
+          dependencies.channelConfigService,
+          dependencies.internalConfigSecret
+        );
         return true;
       }
 

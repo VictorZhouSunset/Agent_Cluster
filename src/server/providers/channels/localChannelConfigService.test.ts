@@ -1,6 +1,6 @@
 // input: temporary OpenClaw config fixtures plus stubbed reload command execution
-// output: provider-level assertions for Telegram apply/clear behavior
-// pos: tests for the local channel configuration provider
+// output: provider-level assertions for generic config reads, writes, patches, and Telegram compatibility helpers
+// pos: tests for the local OpenClaw config provider
 // 一旦我被更新，务必更新我的开头注释以及所属文件夹的md。
 import { mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -9,8 +9,8 @@ import { describe, expect, it, vi } from "vitest";
 import { createLocalChannelConfigService } from "./localChannelConfigService.js";
 
 describe("local channel config service", () => {
-  it("writes Telegram bot tokens into the local OpenClaw config and reloads the gateway", async () => {
-    const rootDir = await mkdtemp(join(tmpdir(), "gate-dashboard-telegram-config-"));
+  it("replaces the local OpenClaw config and reloads the gateway", async () => {
+    const rootDir = await mkdtemp(join(tmpdir(), "gate-dashboard-openclaw-config-"));
     const configPath = join(rootDir, ".openclaw", "openclaw.json");
     const execCommand = vi.fn().mockResolvedValue(undefined);
     const service = createLocalChannelConfigService({
@@ -18,24 +18,28 @@ describe("local channel config service", () => {
       execCommand
     });
 
-    const result = await service.applyTelegramChannel({
-      botToken: "telegram-token-123456",
-      desiredVersion: 2
+    const result = await service.replaceOpenClawConfig({
+      config: {
+        channels: {
+          telegram: {
+            botToken: "telegram-token-123456"
+          }
+        }
+      }
     });
 
     const savedConfig = JSON.parse(await readFile(configPath, "utf8"));
     expect(savedConfig.channels.telegram.botToken).toBe("telegram-token-123456");
     expect(execCommand).toHaveBeenCalledWith("openclaw gateway restart");
-    expect(result).toMatchObject({
-      channelType: "telegram",
-      applyStatus: "connected",
-      desiredVersion: 2,
-      appliedVersion: 2
+    expect(result.config.channels).toEqual({
+      telegram: {
+        botToken: "telegram-token-123456"
+      }
     });
   });
 
-  it("clears the Telegram bot token and preserves unrelated OpenClaw config", async () => {
-    const rootDir = await mkdtemp(join(tmpdir(), "gate-dashboard-telegram-config-"));
+  it("applies JSON merge patches and preserves unrelated config", async () => {
+    const rootDir = await mkdtemp(join(tmpdir(), "gate-dashboard-openclaw-config-"));
     const configPath = join(rootDir, ".openclaw", "openclaw.json");
     const execCommand = vi.fn().mockResolvedValue(undefined);
     await mkdir(join(rootDir, ".openclaw"), { recursive: true });
@@ -45,7 +49,7 @@ describe("local channel config service", () => {
         {
           channels: {
             telegram: {
-              botToken: "telegram-token-123456"
+              botToken: "old-token"
             }
           },
           appearance: {
@@ -62,20 +66,53 @@ describe("local channel config service", () => {
       execCommand
     });
 
-    const result = await service.clearTelegramChannel();
+    const result = await service.patchOpenClawConfig({
+      patch: {
+        channels: {
+          telegram: null,
+          lark: {
+            appId: "lark-app-id"
+          }
+        }
+      }
+    });
 
     const savedConfig = JSON.parse(await readFile(configPath, "utf8"));
-    expect(savedConfig.channels).toBeUndefined();
+    expect(savedConfig.channels.telegram).toBeUndefined();
+    expect(savedConfig.channels.lark.appId).toBe("lark-app-id");
     expect(savedConfig.appearance.theme).toBe("dark");
-    expect(execCommand).toHaveBeenCalledWith("openclaw gateway restart");
-    expect(result).toMatchObject({
-      channelType: "telegram",
-      applyStatus: "not_connected"
+    expect(result.config.channels).toEqual({
+      lark: {
+        appId: "lark-app-id"
+      }
     });
   });
 
+  it("supports Telegram apply and clear via compatibility helpers", async () => {
+    const rootDir = await mkdtemp(join(tmpdir(), "gate-dashboard-openclaw-config-"));
+    const configPath = join(rootDir, ".openclaw", "openclaw.json");
+    const execCommand = vi.fn().mockResolvedValue(undefined);
+    const service = createLocalChannelConfigService({
+      homeDir: rootDir,
+      execCommand
+    });
+
+    await service.applyTelegramChannel({
+      botToken: "telegram-token-123456",
+      desiredVersion: 2
+    });
+
+    let savedConfig = JSON.parse(await readFile(configPath, "utf8"));
+    expect(savedConfig.channels.telegram.botToken).toBe("telegram-token-123456");
+
+    await service.clearTelegramChannel();
+
+    savedConfig = JSON.parse(await readFile(configPath, "utf8"));
+    expect(savedConfig.channels).toEqual({});
+  });
+
   it("surfaces reload failures after writing the config", async () => {
-    const rootDir = await mkdtemp(join(tmpdir(), "gate-dashboard-telegram-config-"));
+    const rootDir = await mkdtemp(join(tmpdir(), "gate-dashboard-openclaw-config-"));
     const configPath = join(rootDir, ".openclaw", "openclaw.json");
     const execCommand = vi.fn().mockRejectedValue(new Error("reload failed"));
     const service = createLocalChannelConfigService({
@@ -84,8 +121,14 @@ describe("local channel config service", () => {
     });
 
     await expect(
-      service.applyTelegramChannel({
-        botToken: "telegram-token-123456"
+      service.patchOpenClawConfig({
+        patch: {
+          channels: {
+            telegram: {
+              botToken: "telegram-token-123456"
+            }
+          }
+        }
       })
     ).rejects.toThrow("reload failed");
 

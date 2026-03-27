@@ -1,6 +1,6 @@
-// input: local OpenClaw home/config paths, Telegram bot token writes, and reload command execution
-// output: persisted Telegram channel config plus structured apply/clear results
-// pos: concrete local channel configuration provider for the gate dashboard
+// input: local OpenClaw config documents, merge patches, Telegram example writes, and reload command execution
+// output: persisted OpenClaw config plus structured read/write/reload results
+// pos: concrete local OpenClaw config provider for the gate dashboard
 // 一旦我被更新，务必更新我的开头注释以及所属文件夹的md。
 import { exec as execCallback } from "node:child_process";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
@@ -10,7 +10,10 @@ import type {
   ApplyTelegramChannelInput,
   ApplyTelegramChannelResult,
   ChannelConfigService,
-  ClearTelegramChannelResult
+  ClearTelegramChannelResult,
+  OpenClawConfigDocument,
+  ReloadOpenClawConfigResult,
+  UpdateOpenClawConfigResult
 } from "./types.js";
 
 export interface LocalChannelConfigServiceOptions {
@@ -20,10 +23,16 @@ export interface LocalChannelConfigServiceOptions {
   execCommand?: (command: string) => Promise<void>;
 }
 
-async function readOpenClawConfig(configPath: string) {
+async function readOpenClawConfig(configPath: string): Promise<OpenClawConfigDocument> {
   try {
     const raw = await readFile(configPath, "utf8");
-    return JSON.parse(raw) as Record<string, unknown>;
+    const parsed = JSON.parse(raw) as unknown;
+
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      throw new Error("OpenClaw config root must be a JSON object.");
+    }
+
+    return parsed as OpenClawConfigDocument;
   } catch (error) {
     if (error instanceof Error && "code" in error && error.code === "ENOENT") {
       return {};
@@ -34,27 +43,36 @@ async function readOpenClawConfig(configPath: string) {
 }
 
 function ensureObject(value: unknown) {
-  return value && typeof value === "object" && !Array.isArray(value) ? { ...(value as Record<string, unknown>) } : {};
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? { ...(value as Record<string, unknown>) }
+    : {};
 }
 
-function cleanupEmptyBranches(config: Record<string, unknown>) {
-  const channels = ensureObject(config.channels);
-  const telegram = ensureObject(channels.telegram);
-
-  if (Object.keys(telegram).length === 0) {
-    delete channels.telegram;
+function applyJsonMergePatch(target: unknown, patch: unknown): unknown {
+  if (!patch || typeof patch !== "object" || Array.isArray(patch)) {
+    return patch;
   }
 
-  if (Object.keys(channels).length === 0) {
-    delete config.channels;
-  } else {
-    config.channels = channels;
+  const base = ensureObject(target);
+
+  for (const [key, value] of Object.entries(patch as Record<string, unknown>)) {
+    if (value === null) {
+      delete base[key];
+      continue;
+    }
+
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      base[key] = applyJsonMergePatch(base[key], value);
+      continue;
+    }
+
+    base[key] = value;
   }
 
-  return config;
+  return base;
 }
 
-async function writeOpenClawConfig(configPath: string, config: Record<string, unknown>) {
+async function writeOpenClawConfig(configPath: string, config: OpenClawConfigDocument) {
   await mkdir(dirname(configPath), { recursive: true });
   await writeFile(configPath, `${JSON.stringify(config, null, 2)}\n`, "utf8");
 }
@@ -75,11 +93,63 @@ export function createLocalChannelConfigService({
 }: LocalChannelConfigServiceOptions): ChannelConfigService {
   const resolvedConfigPath = resolveConfigPath(homeDir, configPath);
 
-  async function reloadGateway() {
+  async function reloadGateway(): Promise<ReloadOpenClawConfigResult> {
     await execCommand(reloadCommand);
+
+    return {
+      configPath: resolvedConfigPath,
+      reloadedAt: new Date().toISOString()
+    };
+  }
+
+  async function persistConfig(config: OpenClawConfigDocument): Promise<UpdateOpenClawConfigResult> {
+    await writeOpenClawConfig(resolvedConfigPath, config);
+    const reloadResult = await reloadGateway();
+
+    return {
+      config,
+      configPath: resolvedConfigPath,
+      reloadedAt: reloadResult.reloadedAt
+    };
   }
 
   return {
+    async getOpenClawConfig() {
+      const config = await readOpenClawConfig(resolvedConfigPath);
+
+      return {
+        config,
+        configPath: resolvedConfigPath
+      };
+    },
+
+    async replaceOpenClawConfig({ config }) {
+      if (!config || typeof config !== "object" || Array.isArray(config)) {
+        throw new Error("OpenClaw config must be a JSON object.");
+      }
+
+      return persistConfig({ ...(config as OpenClawConfigDocument) });
+    },
+
+    async patchOpenClawConfig({ patch }) {
+      if (!patch || typeof patch !== "object" || Array.isArray(patch)) {
+        throw new Error("OpenClaw config patch must be a JSON object.");
+      }
+
+      const currentConfig = await readOpenClawConfig(resolvedConfigPath);
+      const nextConfig = applyJsonMergePatch(currentConfig, patch);
+
+      if (!nextConfig || typeof nextConfig !== "object" || Array.isArray(nextConfig)) {
+        throw new Error("OpenClaw config patch must produce a JSON object.");
+      }
+
+      return persistConfig(nextConfig as OpenClawConfigDocument);
+    },
+
+    async reloadOpenClawConfig() {
+      return reloadGateway();
+    },
+
     async applyTelegramChannel(input: ApplyTelegramChannelInput): Promise<ApplyTelegramChannelResult> {
       const botToken = input.botToken.trim();
 
@@ -87,16 +157,15 @@ export function createLocalChannelConfigService({
         throw new Error("Telegram bot token is required.");
       }
 
-      const config = await readOpenClawConfig(resolvedConfigPath);
-      const channels = ensureObject(config.channels);
-      const telegram = ensureObject(channels.telegram);
-
-      telegram.botToken = botToken;
-      channels.telegram = telegram;
-      config.channels = channels;
-
-      await writeOpenClawConfig(resolvedConfigPath, config);
-      await reloadGateway();
+      await this.patchOpenClawConfig({
+        patch: {
+          channels: {
+            telegram: {
+              botToken
+            }
+          }
+        }
+      });
 
       return {
         channelType: "telegram",
@@ -108,16 +177,13 @@ export function createLocalChannelConfigService({
     },
 
     async clearTelegramChannel(): Promise<ClearTelegramChannelResult> {
-      const config = await readOpenClawConfig(resolvedConfigPath);
-      const channels = ensureObject(config.channels);
-      const telegram = ensureObject(channels.telegram);
-
-      delete telegram.botToken;
-      channels.telegram = telegram;
-      config.channels = channels;
-
-      await writeOpenClawConfig(resolvedConfigPath, cleanupEmptyBranches(config));
-      await reloadGateway();
+      await this.patchOpenClawConfig({
+        patch: {
+          channels: {
+            telegram: null
+          }
+        }
+      });
 
       return {
         channelType: "telegram",
