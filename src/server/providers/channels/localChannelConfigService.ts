@@ -85,10 +85,14 @@ function defaultExecCommand(command: string) {
   return promisify(execCallback)(command).then(() => undefined);
 }
 
+function buildDefaultReloadCommand() {
+  return "bash -lc 'if [ -f \"$HOME/.nvm/nvm.sh\" ]; then . \"$HOME/.nvm/nvm.sh\" >/dev/null 2>&1; fi; openclaw gateway restart'";
+}
+
 export function createLocalChannelConfigService({
   homeDir,
   configPath,
-  reloadCommand = "openclaw gateway restart",
+  reloadCommand = buildDefaultReloadCommand(),
   execCommand = defaultExecCommand
 }: LocalChannelConfigServiceOptions): ChannelConfigService {
   const resolvedConfigPath = resolveConfigPath(homeDir, configPath);

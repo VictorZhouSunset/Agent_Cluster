@@ -9,6 +9,9 @@ import { describe, expect, it, vi } from "vitest";
 import { createLocalChannelConfigService } from "./localChannelConfigService.js";
 
 describe("local channel config service", () => {
+  const expectedDefaultReloadCommand =
+    "bash -lc 'if [ -f \"$HOME/.nvm/nvm.sh\" ]; then . \"$HOME/.nvm/nvm.sh\" >/dev/null 2>&1; fi; openclaw gateway restart'";
+
   it("replaces the local OpenClaw config and reloads the gateway", async () => {
     const rootDir = await mkdtemp(join(tmpdir(), "gate-dashboard-openclaw-config-"));
     const configPath = join(rootDir, ".openclaw", "openclaw.json");
@@ -30,7 +33,7 @@ describe("local channel config service", () => {
 
     const savedConfig = JSON.parse(await readFile(configPath, "utf8"));
     expect(savedConfig.channels.telegram.botToken).toBe("telegram-token-123456");
-    expect(execCommand).toHaveBeenCalledWith("openclaw gateway restart");
+    expect(execCommand).toHaveBeenCalledWith(expectedDefaultReloadCommand);
     expect(result.config.channels).toEqual({
       telegram: {
         botToken: "telegram-token-123456"
