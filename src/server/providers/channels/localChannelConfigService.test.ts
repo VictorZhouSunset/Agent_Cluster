@@ -5,12 +5,15 @@
 import { mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { createLocalChannelConfigService } from "./localChannelConfigService.js";
 
 describe("local channel config service", () => {
-  const expectedDefaultReloadCommand =
-    "bash -lc 'if [ -f \"$HOME/.nvm/nvm.sh\" ]; then . \"$HOME/.nvm/nvm.sh\" >/dev/null 2>&1; fi; openclaw gateway restart'";
+  let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
+
+  afterEach(() => {
+    consoleErrorSpy?.mockRestore();
+  });
 
   it("replaces the local OpenClaw config and reloads the gateway", async () => {
     const rootDir = await mkdtemp(join(tmpdir(), "gate-dashboard-openclaw-config-"));
@@ -33,7 +36,7 @@ describe("local channel config service", () => {
 
     const savedConfig = JSON.parse(await readFile(configPath, "utf8"));
     expect(savedConfig.channels.telegram.botToken).toBe("telegram-token-123456");
-    expect(execCommand).toHaveBeenCalledWith(expectedDefaultReloadCommand);
+    expect(execCommand).toHaveBeenCalledWith("openclaw gateway restart");
     expect(result.config.channels).toEqual({
       telegram: {
         botToken: "telegram-token-123456"
@@ -117,7 +120,12 @@ describe("local channel config service", () => {
   it("surfaces reload failures after writing the config", async () => {
     const rootDir = await mkdtemp(join(tmpdir(), "gate-dashboard-openclaw-config-"));
     const configPath = join(rootDir, ".openclaw", "openclaw.json");
-    const execCommand = vi.fn().mockRejectedValue(new Error("reload failed"));
+    const reloadError = Object.assign(new Error("reload failed"), {
+      stdout: "stdout detail",
+      stderr: "stderr detail"
+    });
+    const execCommand = vi.fn().mockRejectedValue(reloadError);
+    consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const service = createLocalChannelConfigService({
       homeDir: rootDir,
       execCommand
@@ -137,5 +145,17 @@ describe("local channel config service", () => {
 
     const savedConfig = JSON.parse(await readFile(configPath, "utf8"));
     expect(savedConfig.channels.telegram.botToken).toBe("telegram-token-123456");
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect.stringContaining("failed to reload OpenClaw gateway after config write"),
+      expect.objectContaining({
+        configPath,
+        reloadCommand: "openclaw gateway restart"
+      }),
+      expect.objectContaining({
+        message: "reload failed",
+        stdout: "stdout detail",
+        stderr: "stderr detail"
+      })
+    );
   });
 });

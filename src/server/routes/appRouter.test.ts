@@ -6,7 +6,7 @@ import { mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import request from "supertest";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ChannelConfigService } from "../providers/channels/types.js";
 import type { FilesystemProvider } from "../providers/filesystem/types.js";
 import { createLocalFilesystemProvider } from "../providers/filesystem/localFilesystemProvider.js";
@@ -21,6 +21,11 @@ describe("app router", () => {
   let openClawProvider: OpenClawProvider;
   let workspaceDir: string;
   let workspaceSkillsDir: string;
+  let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
+
+  afterEach(() => {
+    consoleErrorSpy?.mockRestore();
+  });
 
   beforeEach(async () => {
     rootDir = await mkdtemp(join(tmpdir(), "gate-dashboard-routes-"));
@@ -414,6 +419,7 @@ describe("app router", () => {
   });
 
   it("maps provider failures to structured 500 responses", async () => {
+    consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const failingProvider: OpenClawProvider = {
       ...openClawProvider,
       async listAgents() {
@@ -434,6 +440,16 @@ describe("app router", () => {
         message: "An unexpected server error occurred."
       }
     });
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect.stringContaining("app router request failed"),
+      expect.objectContaining({
+        method: "GET",
+        path: "/api/agents"
+      }),
+      expect.objectContaining({
+        message: "boom"
+      })
+    );
   });
 
   it("preserves SPA handling for non-api routes like /apiary", async () => {

@@ -1,5 +1,5 @@
 // input: raw HTTP requests plus filesystem and OpenClaw provider dependencies
-// output: normalized API routing decisions and structured JSON error responses
+// output: normalized API routing decisions, structured JSON error responses, and server-side failure logs
 // pos: central API router for the dashboard backend
 // 一旦我被更新，务必更新我的开头注释以及所属文件夹的md。
 import type { IncomingMessage, ServerResponse } from "node:http";
@@ -27,6 +27,29 @@ export interface AppRouterDependencies {
   filesystemProvider: FilesystemProvider;
   internalConfigSecret: string;
   openClawProvider: OpenClawProvider;
+}
+
+function serializeErrorForLog(error: unknown) {
+  if (error instanceof Error) {
+    const details: Record<string, unknown> = {
+      name: error.name,
+      message: error.message
+    };
+
+    if (error.stack) {
+      details.stack = error.stack;
+    }
+
+    if ("code" in error && error.code) {
+      details.code = error.code;
+    }
+
+    return details;
+  }
+
+  return {
+    value: error
+  };
 }
 
 export function sendJson(response: ServerResponse, statusCode: number, payload: unknown) {
@@ -245,6 +268,10 @@ export function createAppRouter(dependencies: AppRouterDependencies) {
         return true;
       }
 
+      console.error("app router request failed", {
+        method: request.method ?? "GET",
+        path: pathname
+      }, serializeErrorForLog(error));
       sendStructuredError(response, 500, "internal_error", "An unexpected server error occurred.");
       return true;
     }

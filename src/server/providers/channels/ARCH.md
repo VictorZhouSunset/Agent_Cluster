@@ -5,6 +5,6 @@ Telegram remains the first compatibility example, but the provider itself is now
 
 | file name | position | function |
 | --- | --- | --- |
-| localChannelConfigService.ts | provider implementation | reads and updates local OpenClaw config, supports merge patches, and reloads the gateway |
-| localChannelConfigService.test.ts | provider test | verifies replace, patch, Telegram compatibility helpers, and reload failure handling |
+| localChannelConfigService.ts | provider implementation | reads and updates local OpenClaw config, supports merge patches, reloads the gateway, and logs reload failures |
+| localChannelConfigService.test.ts | provider test | verifies replace, patch, Telegram compatibility helpers, and reload failure logging |
 | types.ts | provider contract | defines the generic OpenClaw config service interface and Telegram compatibility methods |

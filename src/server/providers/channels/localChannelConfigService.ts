@@ -1,5 +1,5 @@
 // input: local OpenClaw config documents, merge patches, Telegram example writes, and reload command execution
-// output: persisted OpenClaw config plus structured read/write/reload results
+// output: persisted OpenClaw config, structured read/write/reload results, and reload failure logs
 // pos: concrete local OpenClaw config provider for the gate dashboard
 // 一旦我被更新，务必更新我的开头注释以及所属文件夹的md。
 import { exec as execCallback } from "node:child_process";
@@ -85,20 +85,59 @@ function defaultExecCommand(command: string) {
   return promisify(execCallback)(command).then(() => undefined);
 }
 
-function buildDefaultReloadCommand() {
-  return "bash -lc 'if [ -f \"$HOME/.nvm/nvm.sh\" ]; then . \"$HOME/.nvm/nvm.sh\" >/dev/null 2>&1; fi; openclaw gateway restart'";
+function serializeReloadError(error: unknown) {
+  if (error instanceof Error) {
+    const details: Record<string, unknown> = {
+      name: error.name,
+      message: error.message
+    };
+
+    if (error.stack) {
+      details.stack = error.stack;
+    }
+
+    if ("stdout" in error && typeof error.stdout === "string" && error.stdout.trim()) {
+      details.stdout = error.stdout;
+    }
+
+    if ("stderr" in error && typeof error.stderr === "string" && error.stderr.trim()) {
+      details.stderr = error.stderr;
+    }
+
+    if ("code" in error && error.code) {
+      details.code = error.code;
+    }
+
+    return details;
+  }
+
+  return {
+    value: error
+  };
 }
 
 export function createLocalChannelConfigService({
   homeDir,
   configPath,
-  reloadCommand = buildDefaultReloadCommand(),
+  reloadCommand = "openclaw gateway restart",
   execCommand = defaultExecCommand
 }: LocalChannelConfigServiceOptions): ChannelConfigService {
   const resolvedConfigPath = resolveConfigPath(homeDir, configPath);
 
   async function reloadGateway(): Promise<ReloadOpenClawConfigResult> {
-    await execCommand(reloadCommand);
+    try {
+      await execCommand(reloadCommand);
+    } catch (error) {
+      console.error(
+        "failed to reload OpenClaw gateway after config write",
+        {
+          configPath: resolvedConfigPath,
+          reloadCommand
+        },
+        serializeReloadError(error)
+      );
+      throw error;
+    }
 
     return {
       configPath: resolvedConfigPath,
