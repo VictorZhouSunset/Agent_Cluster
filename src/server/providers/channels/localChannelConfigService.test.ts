@@ -8,6 +8,9 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createLocalChannelConfigService } from "./localChannelConfigService.js";
 
+const DEFAULT_OPENCLAW_RELOAD_COMMAND =
+  "env XDG_RUNTIME_DIR=/run/user/1000 DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus systemctl --user restart openclaw-gateway.service";
+
 describe("local channel config service", () => {
   let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
 
@@ -36,7 +39,7 @@ describe("local channel config service", () => {
 
     const savedConfig = JSON.parse(await readFile(configPath, "utf8"));
     expect(savedConfig.channels.telegram.botToken).toBe("telegram-token-123456");
-    expect(execCommand).toHaveBeenCalledWith("openclaw gateway restart");
+    expect(execCommand).toHaveBeenCalledWith(DEFAULT_OPENCLAW_RELOAD_COMMAND);
     expect(result.config.channels).toEqual({
       telegram: {
         botToken: "telegram-token-123456"
@@ -149,7 +152,7 @@ describe("local channel config service", () => {
       expect.stringContaining("failed to reload OpenClaw gateway after config write"),
       expect.objectContaining({
         configPath,
-        reloadCommand: "openclaw gateway restart"
+        reloadCommand: DEFAULT_OPENCLAW_RELOAD_COMMAND
       }),
       expect.objectContaining({
         message: "reload failed",

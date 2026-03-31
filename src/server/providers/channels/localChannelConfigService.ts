@@ -23,6 +23,9 @@ export interface LocalChannelConfigServiceOptions {
   execCommand?: (command: string) => Promise<void>;
 }
 
+const DEFAULT_OPENCLAW_RELOAD_COMMAND =
+  "env XDG_RUNTIME_DIR=/run/user/1000 DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus systemctl --user restart openclaw-gateway.service";
+
 async function readOpenClawConfig(configPath: string): Promise<OpenClawConfigDocument> {
   try {
     const raw = await readFile(configPath, "utf8");
@@ -119,7 +122,7 @@ function serializeReloadError(error: unknown) {
 export function createLocalChannelConfigService({
   homeDir,
   configPath,
-  reloadCommand = "openclaw gateway restart",
+  reloadCommand = DEFAULT_OPENCLAW_RELOAD_COMMAND,
   execCommand = defaultExecCommand
 }: LocalChannelConfigServiceOptions): ChannelConfigService {
   const resolvedConfigPath = resolveConfigPath(homeDir, configPath);
